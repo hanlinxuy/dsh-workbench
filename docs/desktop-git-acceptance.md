@@ -21,7 +21,8 @@
 用户解锁后，在同一独立 profile 重启并重跑：项目工具可见、Chief 管理限制、Git catalog/status、
 Desktop version/snapshot/fill/click/新 snapshot 读回全部通过。只操作本次创建的 AppKit 测试窗口。
 
-固定 Git 提交安装与重启结果在发布验证后补充。
+固定 Git 提交 `f01e849` 通过 pnpm Git 子目录安装两个插件；所有 files 发布文件与测试源码逐字节一致。
+正常重启后宿主探针再次通过，Chief 会话 ID 保持不变。源代码验证通过后合入 main，后续提交仅补充此验收记录。
 
 ## 验证边界
 
@@ -29,4 +30,4 @@ Desktop version/snapshot/fill/click/新 snapshot 读回全部通过。只操作�
 Windows/Linux 未实测。宿主探针属于真实工具执行，不是模型自主规划验收。
 独立 DSH profile 不隔离 OS 桌面；测试只操作本次创建的测试窗口。
 
-等待解锁期间正常停止新增 profile 和测试窗口；解锁后仅恢复这些测试进程。原有环境保持不变。
+验收完成后已停止新增 profile，并退出本次创建的测试窗口。原有环境保持不变。
