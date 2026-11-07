@@ -1,0 +1,3 @@
+- insert:
+    - id: workbench-desktop-host-probe
+      name: workbench-desktop-host-probe
