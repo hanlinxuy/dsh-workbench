@@ -15,6 +15,8 @@ Chief 0.3.2（`3c28fb1b5bac7a1e69cb8afc25bacf78dabcf7fa`），DSH 0.2.1-rc.5。
 - 使用正确 Chief 专属 preset 后，再次重启保持同一 Chief ID，未再次迁移会话。
 - 上游 Node 24 测试 260/260；本仓库测试 27/27，客户端构建一致性检查通过。
 
+后续：首个 preset 问题已由 Chief 0.3.3 修复，见 [独立回归记录](chief-preset-acceptance.md)。下文保留当时的原始发现。
+
 ## 发现的问题与限制
 
 1. **首次入口/preset 问题**：首次测试会话显示 Standard mode，而非 Chief 管家。

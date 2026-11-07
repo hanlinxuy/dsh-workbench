@@ -24,7 +24,7 @@ allowBuilds:
 YAML
 
 dsh plugin --profile web add 'github:ckanner/dsh-plugin-chatgpt#8eed501602fc3b6f8f5a0714556aa1703bbd91ee'
-dsh plugin --profile web add 'github:hanlinxuy/dsh-workbench#3c28fb1b5bac7a1e69cb8afc25bacf78dabcf7fa&path:/plugins/chief'
+dsh plugin --profile web add 'github:hanlinxuy/dsh-workbench#0ffb7a5&path:/plugins/chief'
 # 如需代理，填本机实际监听的 HTTP 代理地址；不需要则省略。
 # export DSH_CHATGPT_PROXY_URL=http://127.0.0.1:PORT
 dsh --profile web --host 127.0.0.1 --port 19452 --no-open
@@ -37,7 +37,7 @@ pnpm 11 对 Git prepare 有构建授权限制，上面仅允许已审阅的固�
 
 打开宿主打印的完整登录 URL。在 **Settings → Models → ChatGPT → Sign in with ChatGPT**
 完成官方登录和授权，然后在模型选择器选择账号实际提供的模型。点击左侧 **Chief 管家**开始管理项目。
-首次发消息前确认顶部 preset 显示 **Chief 管家**，不是 Standard mode；已知首次入口问题见验收记录。
+Chief 0.3.3 已修复首次点击入口时的 preset 校正与重启换会话问题；见 [修复回归](chief-preset-acceptance.md)。
 项目子会话需要可用模型；本次 Chief 派发沿用了当前 ChatGPT 模型。
 
 本地登录 URL、OAuth 回调 URL、token 文件均不得提交到 Git 或发到公开日志。

@@ -43,7 +43,7 @@ dsh --profile web --host 127.0.0.1 --port 19451 --no-open
 暂未发布 npm 包。已验证 pnpm Git 子目录安装 Chief（DSH 0.2.1-rc.5 / pnpm 11.18.0）：
 
 ```sh
-dsh plugin --profile web add 'github:hanlinxuy/dsh-workbench#3c28fb1b5bac7a1e69cb8afc25bacf78dabcf7fa&path:/plugins/chief'
+dsh plugin --profile web add 'github:hanlinxuy/dsh-workbench#0ffb7a5&path:/plugins/chief'
 ```
 
 引号不可省略，避免 shell 解释 `&`。固定提交便于回滚；配合 ChatGPT provider 的独立安装步骤见 [ChatGPT 指南](chatgpt-provider.md)。
