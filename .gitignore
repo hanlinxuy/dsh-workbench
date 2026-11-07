@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.session-history/
+.env
+.env.*
+!.env.example
+*.sqlite*
+*.log
+.DS_Store
+.dsh/
+.credentials*

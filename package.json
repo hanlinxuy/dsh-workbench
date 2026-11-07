@@ -1,0 +1,15 @@
+{
+  "name": "dsh-workbench",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.18.0",
+  "scripts": {
+    "build": "pnpm --dir plugins/chief run build",
+    "check": "node plugins/chief/build-client.js --check",
+    "test": "node --test plugins/chief/*.test.js",
+    "pack:chief": "pnpm --dir plugins/chief pack --pack-destination ../../dist"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
