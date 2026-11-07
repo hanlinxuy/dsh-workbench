@@ -11,6 +11,7 @@ Community plugins and practical guides for DeepSeek Harness. Not an official Dee
 | [Chief](plugins/chief/README.md) | 自然语言项目调度、持久化记忆、任务验收、人工接手、项目看板 | 原型，0.3.2 |
 
 Chief 独立运行在 DSH 内，不依赖 Pi Durable 或 DS-Bot。模型与登录由 DSH 提供。
+`plugins/chief` 是 Chief 的唯一维护目录，后续开发、修复与发布均在本仓库进行。
 本仓库不包含 DSH 宿主，不提供模型凭据，也不绑定 IM。
 
 ## 安装
