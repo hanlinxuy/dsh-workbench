@@ -4,6 +4,7 @@
   "type": "module",
   "packageManager": "pnpm@11.18.0",
   "scripts": {
+    "harness": "node dev/plugin-harness/scripts/cli.mjs",
     "build": "pnpm --dir plugins/chief run build",
     "check": "node plugins/chief/build-client.js --check",
     "test": "node --test plugins/chief/*.test.js",

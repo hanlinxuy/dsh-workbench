@@ -29,7 +29,7 @@ export function apply(ctx, config = {}) {
     useEffect(() => {
       setError('')
       const signal = ctx.layout.beginNavigation()
-      void call('board').then(async state => {
+      void call('open').then(async state => {
         await ctx.sessions.refresh()
         if (!signal.aborted) ctx.uiWorkspace.openSession(state.chiefSessionId)
       }).catch(error => { if (!signal.aborted) setError(error.message) })

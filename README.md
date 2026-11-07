@@ -9,7 +9,7 @@ Community plugins and practical guides for DeepSeek Harness. Not an official Dee
 | 插件 | 能力 | 状态 |
 | --- | --- | --- |
 | [ChatGPT provider](docs/chatgpt-provider.md) | ChatGPT 官方授权、DSH 模型提供方 | 上游 submodule，0.1.18 |
-| [Chief](plugins/chief/README.md) | 自然语言项目调度、持久化记忆、任务验收、人工接手、项目看板 | 原型，0.3.2 |
+| [Chief](plugins/chief/README.md) | 自然语言项目调度、持久化记忆、任务验收、人工接手、项目看板 | 原型，0.3.3 |
 
 Chief 独立运行在 DSH 内，不依赖 Pi Durable 或 DS-Bot。模型与登录由 DSH 提供。
 `plugins/chief` 是 Chief 的唯一维护目录，后续开发、修复与发布均在本仓库进行。
@@ -29,7 +29,7 @@ pnpm check
 pnpm pack:chief
 ```
 
-再按 [安装与升级](docs/installation.md) 将 `dist/independent-chief-0.3.2.tgz` 安装到目标 DSH profile。
+再按 [安装与升级](docs/installation.md) 将 `dist/independent-chief-0.3.3.tgz` 安装到目标 DSH profile。
 本仓库根目录是插件集合，不是可直接安装的单个 DSH 插件；不要把根 GitHub URL 当作 Chief 包。
 
 ## 文档
@@ -38,6 +38,11 @@ pnpm pack:chief
 - [Chief 使用说明](plugins/chief/README.md)
 - [两项目验收步骤](docs/acceptance.md)
 - [ChatGPT 套餐 provider](docs/chatgpt-provider.md)（上游插件安装与验收）
+
+## 开发流程
+
+使用 [plugin-harness 开发 skill](dev/plugin-harness/SKILL.md)：`dev/<topic>` 分支 → 独立 profile → 验收 → 主线。
+本仓库主线为 `main`；内网可用 `master`。正式环境安装与开发回归分开，不自动升级。
 
 ## 开发与兼容性
 

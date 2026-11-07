@@ -1,6 +1,6 @@
 {
   "name": "independent-chief",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -10,6 +10,7 @@
   },
   "files": [
     "index.js",
+    "chief-session.js",
     "controller.js",
     "history.js",
     "state.js",

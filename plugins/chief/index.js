@@ -6,6 +6,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { openStore } from './store.js'
 import { createController } from './controller.js'
 import { readResult } from './history.js'
+import { restoreChiefPreset } from './chief-session.js'
 
 export const name = 'independent-chief'
 export const inject = ['tools', 'agents', 'systemPrompt', 'sessionController', 'sessions', 'sessionTitle', 'workspaceRegistry', 'connection', 'agentPresets']
@@ -61,13 +62,11 @@ export function apply(ctx, config = {}) {
         },
       })
       const previous = store.state.chiefSessionId ?? config.chiefSessionId
-      let preset
       if (previous) {
-        const resolved = await ctx.sessionController.resolveAgent(previous)
-        if (resolved.error) throw new Error(resolved.error.message)
-        preset = ctx.agentPresets.composedPreset(resolved.agent.ctx)
-      }
-      if (preset !== 'independent-chief') {
+        await restoreChiefPreset(ctx, previous)
+        store.state.chiefSessionId = previous
+        await store.save()
+      } else {
         const root = join(directory, 'workspace')
         await mkdir(root, { recursive: true })
         const workspace = await ctx.workspaceRegistry.resolveByPath(root) ?? await ctx.workspaceRegistry.create(root, 'Chief')
@@ -75,12 +74,7 @@ export function apply(ctx, config = {}) {
         const resolved = await ctx.sessionController.resolveAgent(created.sessionId)
         if (resolved.error) throw new Error(resolved.error.message)
         await ctx.sessionTitle.rename(resolved.agent.session, 'Chief')
-        if (previous) store.state.previousChiefSessionIds = [...(store.state.previousChiefSessionIds ?? []), previous]
         store.state.chiefSessionId = created.sessionId
-        if (previous && store.state.route?.sessionId === previous) store.state.route.sessionId = created.sessionId
-        await store.save()
-      } else if (!store.state.chiefSessionId) {
-        store.state.chiefSessionId = previous
         await store.save()
       }
       internalWorkspaceId = (await ctx.workspaceRegistry.resolveByPath(join(directory, 'workspace')))?.id
@@ -151,7 +145,10 @@ export function apply(ctx, config = {}) {
         const body = await request.json()
         if (!initialized) throw new Error(initError ? `Chief initialization failed: ${initError.message}` : 'Chief is not ready')
         let value
-        if (body.endpoint === 'state') value = store.state
+        if (body.endpoint === 'open') {
+          await restoreChiefPreset(ctx, store.state.chiefSessionId)
+          value = { chiefSessionId: store.state.chiefSessionId }
+        } else if (body.endpoint === 'state') value = store.state
         else if (body.endpoint === 'board') value = { ...controller.list(), chiefSessionId: store.state.chiefSessionId, internalWorkspaceId, route: store.state.route }
         else if (body.endpoint === 'command') value = await controller.command(body.payload.line, body.payload.sessionId)
         else throw new Error('Unknown endpoint')

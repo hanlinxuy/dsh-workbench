@@ -9,7 +9,7 @@
 
 ```sh
 export DSH_HOME="$HOME/.local/state/dsh-workbench-demo"
-dsh plugin --profile web add "$PWD/dist/independent-chief-0.3.2.tgz"
+dsh plugin --profile web add "$PWD/dist/independent-chief-0.3.3.tgz"
 dsh --profile web --host 127.0.0.1 --port 19451 --no-open
 ```
 
@@ -26,8 +26,9 @@ dsh --profile web --host 127.0.0.1 --port 19451 --no-open
 ## 升级
 
 保留上一版 tgz 和状态备份，停止宿主，安装新版 tgz，再启动同一 profile。
-从早期 Standard preset 的 Chief 升级时，会保留旧 Chief 并创建专属 preset 的新 Chief。
-项目会话和记忆继续沿用，旧 Chief ID 记录在 `previousChiefSessionIds`。
+0.3.3 起在绑定的原 Chief 会话内恢复专属 preset，保留会话 ID 和历史，不再为 preset 不匹配新建替代会话。
+首次点击 Chief 入口也会校正被宿主按 Standard mode 复用的空白会话。
+更早版本已发生的迁移记录仍保留，不删除历史会话。
 
 ## 回滚
 
