@@ -1,6 +1,6 @@
 # Browser 0.1.0 验收
 
-2026-11-07；macOS ARM64，DSH 0.2.1-rc.5、Node 26.5.1、pnpm 11.18.0，agent-browser 0.41.2。
+2026-11-07；macOS ARM64，DSH 0.2.1-rc.5、Node 26.5.1、pnpm 11.18.0，agent-browser 0.41.2，Edge 156.0.4314.50。
 使用独立 browser-0412 profile 和独立 Edge 浏览器资料；不操作现有 profile 或 IM。
 
 已完成：
@@ -17,3 +17,5 @@
 
 宿主探针已通过：实际 DSH 工具派发完成 version/open/snapshot/text/close；普通项目会话可见工具，Chief 会话仍仅有管理工具。真实网站 SSO、验证码、Windows/Linux 和真实模型自主规划未在这轮验收；
 本地测试成功不代表所有内网站点已通过。
+
+固定 Git 提交 `3ea6bf5` 安装验收：通过 DSH plugin add 从 Git 子目录重新安装，全部发布文件与测试源码一致；重启后宿主探针再次通过，Chief 会话 ID 保持不变。测试结束已停止新建 profile，保留原 Chief 体验 profile。
