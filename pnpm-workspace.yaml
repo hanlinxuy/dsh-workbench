@@ -1,5 +1,6 @@
 packages:
   - plugins/*
+  - "!plugins/chatgpt"
 autoInstallPeers: false
 allowBuilds:
   esbuild: true
