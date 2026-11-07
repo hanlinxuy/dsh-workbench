@@ -3,4 +3,5 @@ packages:
   - "!plugins/chatgpt"
 autoInstallPeers: false
 allowBuilds:
+  agent-browser: false
   esbuild: true

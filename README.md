@@ -9,6 +9,7 @@ Community plugins and practical guides for DeepSeek Harness. Not an official Dee
 | 插件 | 能力 | 状态 |
 | --- | --- | --- |
 | [ChatGPT provider](docs/chatgpt-provider.md) | ChatGPT 官方授权、DSH 模型提供方 | 上游 submodule，0.1.18 |
+| [Browser](plugins/browser/README.md) | 固定 AB release、网页操作、独立登录资料与账号切换 | 原型，0.1.0 |
 | [Chief](plugins/chief/README.md) | 自然语言项目调度、持久化记忆、任务验收、人工接手、项目看板 | 原型，0.3.3 |
 
 Chief 独立运行在 DSH 内，不依赖 Pi Durable 或 DS-Bot。模型与登录由 DSH 提供。

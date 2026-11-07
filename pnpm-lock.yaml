@@ -8,6 +8,12 @@ importers:
 
   .: {}
 
+  plugins/browser:
+    dependencies:
+      agent-browser:
+        specifier: 0.41.2
+        version: 0.41.2
+
   plugins/chief:
     devDependencies:
       esbuild:
@@ -172,6 +178,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  agent-browser@0.41.2:
+    resolution: {integrity: sha512-/agCKB5rw1EEK8SKWo4zid7a5kOwlclqALC0P3c69buJvKdhrl/dJkKdfLqGGaiNIbWzRdqqT0PxZVkwVEf2fg==}
+    engines: {node: '>=24.0.0', pnpm: '>=11.0.0'}
+    hasBin: true
+
   esbuild@0.28.2:
     resolution: {integrity: sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==}
     engines: {node: '>=18'}
@@ -256,6 +267,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
+
+  agent-browser@0.41.2: {}
 
   esbuild@0.28.2:
     optionalDependencies:

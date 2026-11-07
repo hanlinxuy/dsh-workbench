@@ -7,8 +7,9 @@
     "harness": "node dev/plugin-harness/scripts/cli.mjs",
     "build": "pnpm --dir plugins/chief run build",
     "check": "node plugins/chief/build-client.js --check",
-    "test": "node --test plugins/chief/*.test.js",
-    "pack:chief": "pnpm --dir plugins/chief pack --pack-destination ../../dist"
+    "test": "node --test plugins/chief/*.test.js plugins/browser/*.test.js",
+    "pack:chief": "pnpm --dir plugins/chief pack --pack-destination ../../dist",
+    "pack:browser": "pnpm --dir plugins/browser pack --pack-destination ../../dist"
   },
   "engines": {
     "node": ">=24"
