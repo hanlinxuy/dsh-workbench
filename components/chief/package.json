@@ -1,0 +1,60 @@
+{
+  "name": "independent-chief",
+  "version": "0.3.3",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./preset": "./preset.js"
+  },
+  "files": [
+    "index.js",
+    "chief-session.js",
+    "controller.js",
+    "history.js",
+    "state.js",
+    "store.js",
+    "client.js",
+    "cordis.patch.yml",
+    "memory.js",
+    "prompt.md",
+    "preset.js",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/dsh-web": "*",
+    "react": "*"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "build": "node build-client.js",
+    "test": "node --test *.test.js"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "description": "DSH-native project Chief prototype",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "project-management"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hanlinxuy/dsh-workbench.git",
+    "directory": "plugins/chief"
+  }
+}

@@ -1,0 +1,3 @@
+- insert:
+    - id: workbench-browser
+      name: dsh-workbench-browser

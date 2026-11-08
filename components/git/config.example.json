@@ -1,0 +1,47 @@
+{
+  "platforms": {
+    "public-github": {
+      "kind": "github",
+      "network": "external",
+      "hosts": ["github.com", "api.github.com"],
+      "apiBase": "https://api.github.com",
+      "tokenEnv": "WORKBENCH_GITHUB_TOKEN",
+      "apiWrites": ["issue_create", "comment_create"]
+    },
+    "company-gitlab": {
+      "kind": "gitlab",
+      "network": "internal",
+      "hosts": ["gitlab.example.internal"],
+      "apiBase": "https://gitlab.example.internal/api/v4",
+      "tokenEnv": "WORKBENCH_GITLAB_TOKEN",
+      "apiWrites": ["issue_create", "comment_create"]
+    },
+    "company-git": {
+      "kind": "git",
+      "network": "internal",
+      "hosts": ["git.example.internal"]
+    }
+  },
+  "repositories": {
+    "workbench": {
+      "path": "/absolute/path/to/workbench",
+      "localWrite": true,
+      "platform": "public-github",
+      "apiRepo": "OWNER/REPO",
+      "remotes": {
+        "origin": {
+          "platform": "public-github",
+          "url": "git@github.com:OWNER/REPO.git",
+          "fetch": true,
+          "push": false
+        },
+        "company": {
+          "platform": "company-git",
+          "url": "git@git.example.internal:team/workbench.git",
+          "fetch": true,
+          "push": true
+        }
+      }
+    }
+  }
+}
