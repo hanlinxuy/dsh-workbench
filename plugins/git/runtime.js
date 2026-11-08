@@ -48,6 +48,11 @@ export function createGit(config = {}) {
       return stdout
     }
     const pending = (queues.get(repository) ?? Promise.resolve()).then(async () => {
+      if (action === 'log' && branch !== undefined) {
+        if (typeof branch !== 'string' || branch.startsWith('-')) throw new Error('Valid branch required')
+        await git(['check-ref-format', '--branch', branch])
+        return git(['log', '-20', '--oneline', branch, '--'])
+      }
       if (['status', 'diff', 'log', 'branches'].includes(action)) {
         return git({ status: ['status', '--short', '--branch'], diff: ['diff', '--no-ext-diff', '--no-textconv'], log: ['log', '-20', '--oneline'], branches: ['branch', '--list'] }[action])
       }
@@ -65,12 +70,12 @@ export function createGit(config = {}) {
         await git(['check-ref-format', '--branch', branch])
         return git(['switch', '--no-guess', branch])
       }
-      if (['fetch', 'push'].includes(action)) {
+      if (['fetch', 'push', 'remote_head'].includes(action)) {
         const rule = repo.remotes?.[remote]
         if (!rule) throw new Error('Remote is not configured')
         const platform = platforms[rule.platform]
         if (action === 'push' && (platform.network === 'external' || rule.push !== true)) throw new Error('Push is disabled for this remote')
-        if (action === 'fetch' && rule.fetch !== true) throw new Error('Fetch is disabled for this remote')
+        if (action !== 'push' && rule.fetch !== true) throw new Error('Remote reads are disabled for this remote')
         // get-url expands insteadOf/pushInsteadOf; verify every push destination.
         const urls = (await git(['remote', 'get-url', ...(action === 'push' ? ['--push'] : []), '--all', remote])).trim().split('\n')
         if (urls.some(url => url !== rule.url)) throw new Error('Remote URL changed; operator must update configuration')
@@ -82,6 +87,7 @@ export function createGit(config = {}) {
         if (action === 'fetch') return git(['-c', 'http.followRedirects=false', 'fetch', '--no-recurse-submodules', remote])
         if (typeof branch !== 'string' || branch.startsWith('-')) throw new Error('Explicit destination branch required')
         await git(['check-ref-format', `refs/heads/${branch}`])
+        if (action === 'remote_head') return git(['-c', 'http.followRedirects=false', 'ls-remote', '--exit-code', '--heads', remote, `refs/heads/${branch}`])
         return git(['-c', 'http.followRedirects=false', '-c', 'push.followTags=false', 'push', '--no-follow-tags', '--recurse-submodules=no', remote, `HEAD:refs/heads/${branch}`])
       }
       const platform = platforms[repo.platform]

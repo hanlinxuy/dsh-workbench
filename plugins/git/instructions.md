@@ -13,3 +13,7 @@ to do next. Never automatically repeat a push, issue creation or comment.
 If denied, explain the configured restriction. Do not use shell, browser, another
 credential or URL to bypass policy. Configuration is operator-owned, not model-editable
 through this tool. Chief delegates repository work to project sessions.
+
+After a push, use remote_head to read the actual remote branch hash and compare it
+with the intended commit. log(branch) reads that local/tracking ref, not the server.
+An empty push output alone is not independent proof of the remote state.

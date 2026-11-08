@@ -9,7 +9,7 @@ export async function apply(ctx, config = {}) {
   const run = createGit(file ? JSON.parse(await readFile(file, 'utf8')) : config)
   ctx.tools.register(defineTool({
     name: 'workbench_git', timeoutMs: 65000,
-    description: 'Configured Git repositories/platforms only. catalog; status/diff/log/branches(repository); stage(repository,paths); commit(repository,message); switch(repository,branch); fetch(repository,remote); push(repository,remote,branch); repo_get/issues_list/issue_get/comments_list/issue_create/comment_create(repository,number,title,body,page). API writes and Git push are separately gated. External push is denied. Never retry uncertain writes automatically.',
+    description: 'Configured Git repositories/platforms only. catalog; status/diff/branches(repository); log(repository,optional branch); remote_head(repository,remote,branch) reads actual remote branch hash; stage(repository,paths); commit(repository,message); switch(repository,branch); fetch(repository,remote); push(repository,remote,branch); repo_get/issues_list/issue_get/comments_list/issue_create/comment_create(repository,number,title,body,page). API writes and Git push are separately gated. External push is denied. Never retry uncertain writes automatically.',
     parameters: { action: { type: 'string', required: true }, repository: { type: 'string' }, remote: { type: 'string' }, branch: { type: 'string' }, message: { type: 'string' }, paths: { type: 'array', items: { type: 'string' } }, number: { type: 'number' }, title: { type: 'string' }, body: { type: 'string' }, page: { type: 'number' } },
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
     execute: (args, exec) => run(args, exec.signal),

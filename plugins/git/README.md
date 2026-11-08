@@ -37,7 +37,7 @@ export DSH_GIT_CONFIG='/absolute/path/to/private/git-config.json'
 | --- | --- |
 | status/diff/log/branches | 仓库已配置 |
 | stage/commit/switch | localWrite=true |
-| fetch | 对应 remote.fetch=true，URL/主机匹配 |
+| fetch / remote_head | 对应 remote.fetch=true，URL/主机匹配 |
 | push | remote.push=true **且平台为 internal** |
 | 平台读取 | 有 API 适配器及仓库映射 |
 | 创建 issue/发表评论 | apiWrites 明确包含对应动作 |
@@ -61,10 +61,37 @@ HTTP API 和 Git HTTP 不跟随重定向，避免检查一个地址却请求另�
 - “将当前 HEAD 推送到 workbench 的 company remote 的 feature/fix 分支。”
 - “在 workbench 创建一条 issue，内容是……。”
 
-第一版支持已有仓库、已有分支切换、精确文件暂存和提交、fetch、显式分支 push。
+支持已有仓库、已有分支切换、精确文件暂存和提交、fetch、显式分支 push。
+0.1.1 起 log(branch) 真正读取指定本地/跟踪分支；remote_head(remote,branch) 查询服务端分支 SHA。
+推送后使用 remote_head 核对实际远端，不能只凭空输出或本地跟踪分支声称成功。
 不提供 clone、强推、reset、删除文件/分支、自动合并。diff 当前显示未暂存差异。
 API 提供 repo_get、issues_list、issue_get、comments_list、issue_create、comment_create；列表每页 30 条，page 参数翻页。
 GitHub issue 评论入口也可用于 PR 的普通讨论评论；GitLab 此版是 issue notes，不含 MR review。
 
 Chief 维持管理工具限制，将 Git 任务派给项目会话；本插件不会修改 Chief preset 或其他 profile。
 测试：`node --test plugins/git/runtime.test.js`。测试只写临时 Git 仓库及本地模拟 API，不向外网发布消息。
+
+## 代理（API 与 Git 分别生效）
+
+API 使用 Node fetch，单独设置 HTTPS_PROXY 不会在所有 Node 启动方式下自动生效。
+启动 DSH 前显式启用 Node 的环境代理支持（本次验证 Node 26.5.1）：
+
+```sh
+export NODE_USE_ENV_PROXY=1
+export HTTPS_PROXY='http://127.0.0.1:49159'
+export HTTP_PROXY="$HTTPS_PROXY"
+export https_proxy="$HTTPS_PROXY"
+export http_proxy="$HTTP_PROXY"
+export NO_PROXY='localhost,127.0.0.1,.example.internal'
+export no_proxy="$NO_PROXY"
+# 在这些环境变量下启动独立 DSH profile
+```
+
+内网代理地址、直连域名按实际部署替换；大小写变量保持一致。
+Git HTTP 还会读取系统/全局/仓库 proxy 配置，已有 URL 专用配置可能覆盖环境变量。
+SSH remote 不使用 HTTP_PROXY，需由内网既有 SSH ProxyCommand/ProxyJump 配置处理。
+不要关闭 TLS 校验；公司 CA 通过 Node/Git 各自的受信任证书配置安装。
+
+可运行 `CLASH_PROXY_URL=http://127.0.0.1:49159 node plugins/git/test/proxy.mjs`：
+本地 CONNECT 转发器记录目标主机，再转发给指定代理；仅 GET 公共仓库信息和 fetch 公共 Git 仓库。
+同时用不可用代理作为负对照，确认请求没有静默直连。测试创建并清理自己的临时仓库，不改全局 Git 配置。
