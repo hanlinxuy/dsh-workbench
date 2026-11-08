@@ -80,3 +80,8 @@ macOS，DSH 0.2.1-rc.5，Node 24，独立 suite profiles：
 复现脚本：`bundles/test/check-live.mjs`，仅对新建 `suite-*` profile 使用；
 `bundles/test/probe` 为开发探针，不包含在套装发布文件中，不安装到正式 profile。
 Windows 实机、跨状态格式迁移、已有 standalone 自动迁移未在此轮验证。
+
+2026-11-08 固定 Git 来源验收：
+`56e2b340491be91f65da40f887a32af3a165f6be`，从 GitHub `&path:/bundles/workbench` 实际安装，
+比对发布文件与组件 SHA256 后重跑开关、限制和 macOS 窗口操作，均通过。36 项自动测试和生成文件检查通过。
+套装源码未在此记录之后改动；正式使用可固定此提交。测试 profile 已停止，现有环境未升级。
