@@ -32,7 +32,12 @@ Git 0.1.1：
 复测由原 Chief 重新派发，明确撤销旧证据；只为 Git 准备一处新的测试文件变更，桌面任务不重复执行。
 真实模型复测通过：remote_head 返回的完整 SHA 与独立读取 bare 仓库 main 的值一致；
 log(baseline) 不含新提交，log(main) 含新提交。两次 API 拒绝和 outside push 拒绝均在实际工具返回中核对。
-Chief 重新完整读取报告与 audit，保存 accepted 评审。固定提交安装及重启结果在发布后补充。
+Chief 重新完整读取报告与 audit，保存 accepted 评审。模型同时指出 log 仅返回缩写 SHA，
+因此其比较是前缀对应；验收者另外用 git rev-parse 与 bare 仓库 ref 完成了完整 SHA 独立比较。
+
+固定提交 `9b6eed7` 通过 Git 子目录安装后，所有发布文件与测试源码一致。正常重启后 Chief ID 不变，
+真实模型读回了两项目记忆、桌面标记和三项拒绝，再自行派发只读核验任务。项目只调用
+remote_head、log(main)、log(baseline)、repo_get，无重做桌面或重复写入。
 
 ## 外网写入限制
 
@@ -42,6 +47,8 @@ Chief 重新完整读取报告与 audit，保存 accepted 评审。固定提交�
 外网 API 的 apiWrites=[]。模型各调用一次 issue_create/comment_create，均收到 API write is disabled，
 在 HTTP 调用前拒绝。轨迹中没有其他工具绕过；没有对外创建 issue/comment。
 这验证“允许哪些写入”的开关，不表示 issue/comment 永久禁止；按内网规则配置相应许可后可使用。
+另有纯 mock 正向测试：external 平台显式允许两种写入时，只有 issue/comment 路由可生成请求，
+repo_delete/file_update/pull_create/merge 被拒绝；mock 拦截全部 fetch，没有真实外网写入。
 
 ## 代理验证
 
@@ -59,3 +66,7 @@ Git HTTP 另外读取 Git proxy 配置，测试隔离了全局配置以避免优
 这是有限的真实模型闭环，不是任意桌面应用、任意内网站点的成功率评测。
 Windows/Linux、公司 SSO、公司 Git 平台真实写入未验证；GitHub/GitLab API 写入格式仍由本地模拟服务测试。
 外网安全限制作用于插件工具，整机出口策略继续由内网部署负责。
+
+全仓库 34 项测试通过，Chief 构建一致性检查通过。原始工具轨迹与账号配置只留在私有测试 profile，不提交公开仓库。
+
+验收结束已正常停止新增 profile，并退出本次测试窗口；原有 DSH 环境不变。

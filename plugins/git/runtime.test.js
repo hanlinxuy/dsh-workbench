@@ -86,3 +86,20 @@ test('GitHub/GitLab adapters: exact endpoints, write permissions, pagination and
     assert.throws(() => createGit({ platforms: { bad: { kind: 'github', network: 'external', hosts: ['127.0.0.1'], apiBase: base } } }), /HTTPS/)
   } finally { await new Promise(resolve => server.close(resolve)) }
 })
+
+test('external API permits only configured issue/comment operations without sending real requests', async t => {
+  const sent = []
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    sent.push({ url: String(url), method: options.method })
+    return new Response(JSON.stringify({ id: sent.length }), { status: 201, headers: { 'Content-Type': 'application/json' } })
+  })
+  const run = createGit({ platforms: { outside: { kind: 'github', network: 'external', hosts: ['api.github.com'], apiBase: 'https://api.github.com', apiWrites: ['issue_create', 'comment_create'] } }, repositories: { fixture: { path: tmpdir(), platform: 'outside', apiRepo: 'example/fixture' } } })
+  await run({ action: 'issue_create', repository: 'fixture', title: 'Mock only', body: 'No real request' })
+  await run({ action: 'comment_create', repository: 'fixture', number: 1, body: 'No real request' })
+  assert.deepEqual(sent, [
+    { url: 'https://api.github.com/repos/example/fixture/issues', method: 'POST' },
+    { url: 'https://api.github.com/repos/example/fixture/issues/1/comments', method: 'POST' },
+  ])
+  for (const action of ['repo_delete', 'file_update', 'pull_create', 'merge']) await assert.rejects(run({ action, repository: 'fixture' }), /Unsupported/)
+  assert.equal(sent.length, 2)
+})
