@@ -4,6 +4,16 @@
 
 Community plugins and practical guides for DeepSeek Harness. Not an official DeepSeek project.
 
+## 一次安装
+
+推荐 [Workbench 套装](docs/workbench-suite.md)：Chief、Browser、Desktop、受限 Git 默认开启，ChatGPT 安装但默认关闭。在 DSH「添加插件」粘贴：
+
+```text
+github:hanlinxuy/dsh-workbench#main&path:/bundles/workbench
+```
+
+内网用 `&path:/bundles/core`，完全不带 ChatGPT。正式部署将 `main` 换成验收提交。各插件仍可独立安装。
+
 ## 插件
 
 | 插件 | 能力 | 状态 |

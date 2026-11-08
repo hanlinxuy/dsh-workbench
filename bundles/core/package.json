@@ -1,0 +1,35 @@
+{
+  "name": "dsh-workbench-core",
+  "version": "0.1.0",
+  "description": "Pinned optional DSH Workbench components without ChatGPT",
+  "private": false,
+  "type": "module",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "components",
+    "preset.js",
+    "provenance.json"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "agent-browser": "0.41.2",
+    "agent-desktop": "1.2.0"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hanlinxuy/dsh-workbench.git",
+    "directory": "bundles/core"
+  }
+}

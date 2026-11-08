@@ -1,8 +1,11 @@
 packages:
   - plugins/*
+  - bundles/*
   - "!plugins/chatgpt"
 autoInstallPeers: false
 allowBuilds:
   agent-desktop: false
   agent-browser: false
   esbuild: true
+minimumReleaseAgeExclude:
+  - dsh-plugin-chatgpt@0.1.18
