@@ -32,7 +32,25 @@ export function createGit(config = {}) {
     }
   }
   const queues = new Map()
-  return async (args, signal) => {
+  return async (args, signal, cwd) => {
+    // Discover only the active workspace; explicit operator policies still win.
+    if (cwd && (!args.repository || args.repository === "current") && !repositories.current) {
+      const { stdout } = await exec("git", ["-C", cwd, "rev-parse", "--show-toplevel"], { signal, timeout: 10000 })
+      const path = stdout.trim()
+      const known = Object.entries(repositories).find(([, repo]) => repo.path === path)
+      if (known) return createGit(config)({ ...args, repository: known[0] }, signal)
+      const remote = args.remote ?? "origin"
+      if (!/^[A-Za-z0-9_.-]+$/.test(remote) || remote.startsWith("-")) throw new Error("Invalid remote name")
+      const result = await exec("git", ["-C", path, "config", "--get", `remote.${remote}.url`], { signal, timeout: 10000 }).catch(error => { if (error.code === 1) return { stdout: "" }; throw error })
+      const raw = result.stdout.trim()
+      const match = /^(?:https?:\/\/|ssh:\/\/)?(?:[^@/]+@)?([^/:]+)[:/](.+?)(?:\.git)?$/.exec(raw)
+      const host = match?.[1], apiRepo = match?.[2]
+      const configured = Object.entries(platforms).find(([, platform]) => platform.hosts.includes(host))
+      const platformId = configured?.[0] ?? "discovered"
+      const platform = configured?.[1] ?? (host === "github.com" ? { kind: "github", network: "external", hosts: [host, "api.github.com"], apiBase: "https://api.github.com", githubLogin: true } : { kind: "git", network: "external", hosts: [host || "unknown"] })
+      const readOnly = { ...platform, apiWrites: [] }
+      return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: false, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: false } } : {} } } })({ ...args, repository: "current" }, signal)
+    }
     const { action, repository, remote = 'origin', branch, message, paths, number, title, body, page = 1 } = args
     if (action === 'catalog') return JSON.stringify({
       platforms: Object.fromEntries(Object.entries(platforms).map(([id, p]) => [id, { kind: p.kind, network: p.network, apiWrites: p.apiWrites ?? [] }])),
@@ -104,7 +122,8 @@ export function createGit(config = {}) {
       const suffix = { repo_get: '', issues_list: '/issues', issue_get: `/issues/${number}`, comments_list: `/issues/${number}/${github ? 'comments' : 'notes'}`, issue_create: '/issues', comment_create: `/issues/${number}/${github ? 'comments' : 'notes'}` }[action]
       const url = new URL(platform.apiBase.replace(/\/$/, '') + '/' + prefix + suffix)
       if (['issues_list', 'comments_list'].includes(action)) { url.searchParams.set('per_page', '30'); url.searchParams.set('page', String(page)) }
-      const token = platform.tokenEnv ? process.env[platform.tokenEnv] : undefined
+      let token = platform.tokenEnv ? process.env[platform.tokenEnv] : undefined
+      if (!token && platform.githubLogin) token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || (await exec("gh", ["auth", "token", "--hostname", "github.com"], { signal, timeout: 10000 }).catch(() => ({ stdout: "" }))).stdout.trim()
       if (platform.tokenEnv && !token) throw new Error(`Credential environment variable missing: ${platform.tokenEnv}`)
       const headers = { Accept: 'application/json', 'Content-Type': 'application/json', ...(token ? github ? { Authorization: `Bearer ${token}` } : { 'PRIVATE-TOKEN': token } : {}) }
       const payload = action === 'issue_create' ? { title, [github ? 'body' : 'description']: body } : { body }
