@@ -8,6 +8,7 @@ for (const kind of ['core', 'workbench']) test(`${kind}: release provenance and 
   const pkg = JSON.parse(await read('package.json'))
   for (const version of Object.values(pkg.dependencies)) assert.match(version, /^\d+\.\d+\.\d+$/)
   assert.equal(!!pkg.dependencies['dsh-plugin-chatgpt'], kind === 'workbench')
+  assert.ok((await read('components/chief/client.js')).includes(`id:'${pkg.name}'`))
   const patch = await read('cordis.patch.yml')
   assert.equal(patch.includes('id: chatgpt'), kind === 'workbench')
   if (kind === 'workbench') assert.match(patch, /id: chatgpt\n      disabled: true/)
