@@ -13,7 +13,7 @@
     "components/chief/history.js": "07f94691c60e6b6c9516b9b4609d8e10f57b0158cd5a283ab3fe01dccf2a06ef",
     "components/chief/state.js": "57cab28ccf3f1a24a41adae5e68c8180c26df19a2009f5b8106cbf45c2d41f04",
     "components/chief/store.js": "c8e5978cc7e488f6d3fe3b6c807117ea62052451f44b48a5761f69c29ea053ed",
-    "components/chief/client.js": "4b600a1f5255cce1e0c93d03a6b382b222bf3d7762ea77285858bad278461014",
+    "components/chief/client.js": "0e368573864d74f672a78dd7e4c9a05ccf8c453f5d3f1d229814ced518e25dbf",
     "components/chief/cordis.patch.yml": "9c85240fff752786e16a90d0d9a9c7a6e9a04054c0818c02bf12822da3818ca4",
     "components/chief/memory.js": "7c9bd42ef519f047d7c446ad0ad8a006955d2fdfe802b55b3ca0f29bdc1393ec",
     "components/chief/prompt.md": "76c13a22adb886fc4de6207ab30dabc565c591c88634baefd1e78cc45ee07c53",
