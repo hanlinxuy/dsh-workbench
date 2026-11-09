@@ -35,7 +35,7 @@ export function apply(ctx) {
           providers: ctx.llm.listProviders().map(p => p.id ?? p.provider ?? p.name),
           presets: (await ctx.agentPresets.list()).map(p => p.id),
           clients: ctx.clientModules.graph().entries.map(e => ({ id: e.id, name: e.name })),
-          plugins: (await ctx.pluginManager.listPlugins()).filter(p => /chief|workbench|chatgpt/.test(p.moduleName)).map(p => ({ id: p.entryId, module: p.moduleName, enabled: p.enabled, phase: p.fiberPhase })),
+          plugins: (await ctx.pluginManager.listPlugins()).filter(p => /chief|workbench|chatgpt/.test(p.moduleName)).map(p => ({ id: p.entryId, module: p.moduleName, enabled: p.enabled, phase: p.fiberPhase, meta: p.meta })),
         }
       }
       return run().then(value => Response.json({ ok: true, value }), error => Response.json({ ok: false, error: error.message }))

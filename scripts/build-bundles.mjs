@@ -21,12 +21,12 @@ for (const kind of ['core', 'workbench']) {
     const show = path => execFileSync('git', ['show', `${commit}:plugins/${directory}/${path}`], { cwd: fileURLToPath(root) })
     const pkg = JSON.parse(show('package.json'))
     for (const file of ['package.json', ...pkg.files]) files.set(`components/${directory}/${file}`, show(file))
-    const entry = `./components/${directory}/index.js`
+    const entry = `${manifest.name}/${directory}`
     let patch = rows(show('cordis.patch.yml').toString()).replaceAll(`name: ${pkg.name}\n`, `name: ${entry}\n`)
     if (directory === 'chief') {
-      const source = `import Preset from '@deepseek-ai/dsh-agent-preset'\nimport * as Chief from './index.js'\nexport const name = 'independent-chief'\nexport function apply(ctx, config = {}) {\n  ctx.plugin(Preset, { id: 'independent-chief', name: 'Chief 管家', description: '项目协调、独立 Markdown 记忆与任务验收', order: 20, plugins: [ { id: 'chief-persona-and-memory', name: new URL('../../preset.js', import.meta.url).href, config: { instructions: 'Your persistent memory is the private Chief Markdown/Git store. Read it with chief_project list; update it with remember and review. Do not claim to remember project facts without reading this store.' } }, { id: 'chief-time-context', name: '@deepseek-ai/dsh-time-context' } ] })\n  ctx.plugin(Chief, config)\n}\n`
+      const source = `import Preset from '@deepseek-ai/dsh-agent-preset'\nimport * as Chief from './index.js'\nexport const name = 'independent-chief'\nexport function apply(ctx, config = {}) {\n  ctx.plugin(Preset, { id: 'independent-chief', name: 'Chief 管家', description: '项目协调、独立 Markdown 记忆与任务验收', order: 20, plugins: [ { id: 'chief-persona-and-memory', name: new URL('../../persona/preset.js', import.meta.url).href, config: { instructions: 'Your persistent memory is the private Chief Markdown/Git store. Read it with chief_project list; update it with remember and review. Do not claim to remember project facts without reading this store.' } }, { id: 'chief-time-context', name: '@deepseek-ai/dsh-time-context' } ] })\n  ctx.plugin(Chief, config)\n}\n`
       files.set('components/chief/suite.js', Buffer.from(source))
-      patch = `    - id: independent-chief\n      name: ./components/chief/suite.js\n`
+      patch = `    - id: independent-chief\n      name: ${manifest.name}\n`
     }
     components.push(patch)
   }
@@ -38,6 +38,8 @@ for (const kind of ['core', 'workbench']) {
     patch += rows(await readFile(join(dir, 'cordis.patch.yml'), 'utf8')).replace('    - id: chatgpt\n', '    - id: chatgpt\n      disabled: true\n')
   }
   files.set('cordis.patch.yml', Buffer.from(patch))
+  files.set('persona/package.json', Buffer.from(JSON.stringify({name: 'workbench-chief-persona', type: 'module'})))
+  files.set('persona/preset.js', Buffer.from("export * from '../components/chief/preset.js'\n"))
   files.set('preset.js', Buffer.from("// Separate metadata owner: this backend-only preset must not load Chief's UI twice.\nexport * from './components/chief/preset.js'\n"))
   const provenance = { commits: lock, sha256: Object.fromEntries([...files].filter(([file]) => file.startsWith('components/')).map(([file, content]) => [file, createHash('sha256').update(content).digest('hex')])) }
   files.set('provenance.json', Buffer.from(JSON.stringify(provenance, null, 2) + '\n'))

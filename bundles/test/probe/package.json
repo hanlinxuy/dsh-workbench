@@ -1,1 +1,1 @@
-{"name":"workbench-suite-probe","version":"0.0.1","type":"module","private":true,"main":"index.js","dsh":{"bundle":{"patch":"./cordis.patch.yml"}}}
+{"name":"workbench-suite-probe","version":"0.0.2","type":"module","private":true,"main":"index.js","dsh":{"bundle":{"patch":"./cordis.patch.yml"}}}
