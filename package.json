@@ -1,6 +1,6 @@
 {
   "name": "dsh-workbench-core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "项目管理、浏览器、桌面操作与 Git 协作，一次安装，按需开启。",
   "private": false,
   "type": "module",
