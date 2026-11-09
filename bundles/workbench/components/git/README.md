@@ -95,3 +95,7 @@ SSH remote 不使用 HTTP_PROXY，需由内网既有 SSH ProxyCommand/ProxyJump 
 可运行 `CLASH_PROXY_URL=http://127.0.0.1:49159 node plugins/git/test/proxy.mjs`：
 本地 CONNECT 转发器记录目标主机，再转发给指定代理；仅 GET 公共仓库信息和 fetch 公共 Git 仓库。
 同时用不可用代理作为负对照，确认请求没有静默直连。测试创建并清理自己的临时仓库，不改全局 Git 配置。
+
+## 当前工作区自动读取
+
+`repository` 留空或使用 `current`，自动识别会话工作目录的 Git 根目录与 origin。无需登记即可读取状态、日志、分支和 GitHub Issues。GitHub 优先沿用 GH_TOKEN/GITHUB_TOKEN 或已有 gh 登录；公共仓库可匿名读取。未知平台仍可读取本地 Git，API 适配可按域名配置。自动发现不授予写权限，已有仓库规则优先；外网 push 仍禁止。
