@@ -1,5 +1,8 @@
-Use workbench_git catalog first to see configured repository IDs and permissions.
-Use only authorized repositories. Read status/diff before staging specific files;
+Use workbench_git catalog with repository=current first: it discovers the active workspace and remote automatically.
+An empty configured catalog does not mean the workspace is not a Git repository.
+GitHub reads reuse GH_TOKEN/GITHUB_TOKEN or existing gh login; public reads need no login.
+Unknown platforms still support local Git reads; platform API adapters may need configuration.
+Discovered repositories permit reads; writes still require explicit operator policy. Read status/diff before staging specific files;
 never include unrelated work or credentials. Commit and push only within the user's
 requested scope. Fetch updates remote tracking refs but does not merge local work.
 Switch only to an existing branch; this tool does not reset or discard changes.
