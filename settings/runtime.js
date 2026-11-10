@@ -41,8 +41,7 @@ export function apply(ctx) {
             // The same native serialization as DSH's plugin manager. No live
             // file watcher sees a half-written composition while inside HMR.
             if(!hmr)return {...result,application:'restart-required'}
-            const reloaded=await hmr.reconcileProfile()
-            return {...result,application:reloaded.restartReason||reloaded.pending.length?'restart-required':'applied',warnings:reloaded.warnings}
+            return hmr.reconcileProfile().then(reloaded=>({...result,application:reloaded.restartReason||reloaded.pending.length?'restart-required':'applied',warnings:reloaded.warnings}),error=>({...result,application:'restart-required',warnings:[`配置已保存，但实时重载失败：${error.message}`]}))
           }
           const result=await withFileLock(join(profile,'package.json'),()=>hmr?hmr.runExclusive(change):change(),{waitMs:5000})
           lastMigration=result
