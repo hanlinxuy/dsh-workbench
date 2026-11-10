@@ -1,6 +1,6 @@
 {
   "name": "dsh-workbench-git",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -13,7 +13,8 @@
     "cordis.patch.yml",
     "README.md",
     "config.example.json",
-    "LICENSE"
+    "LICENSE",
+    "connection-policy.js"
   ],
   "peerDependencies": {
     "@deepseek-ai/dsh-tools": "*"

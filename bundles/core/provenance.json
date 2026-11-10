@@ -3,7 +3,7 @@
     "chief": "57a86049a2d73d11ec3fc3028150c54a3f3fbbd3",
     "browser": "9b6569f800d562b2ab0bc3678a984c46c70dd2dc",
     "desktop": "9d0129fe68091c8408a959e3f29a0eb93b346659",
-    "git": "57a86049a2d73d11ec3fc3028150c54a3f3fbbd3"
+    "git": "511c877a0bd8a4176a90af362eef7a555bc8c28d"
   },
   "sha256": {
     "components/chief/package.json": "31cf8c2045e3f64ef14b94ec8e2b9ed0642d88ff148c9974040819bde1f16578",
@@ -14,7 +14,7 @@
     "components/chief/state.js": "57cab28ccf3f1a24a41adae5e68c8180c26df19a2009f5b8106cbf45c2d41f04",
     "components/chief/store.js": "1e7b89c9a954d1a8b870a60959480163fdea6339d695fc2026e3b6100e8ad53c",
     "components/chief/lifecycle.js": "aa5f1074aae0391235d18a74e653ea2de4ec95236f80c9d0cc3452e6d481a6d7",
-    "components/chief/client.js": "0bca875fde2a78c97712d350e39240c838de7ad1a02b738dd7f29df8156c1c89",
+    "components/chief/client.js": "c624697d57ec475289768e32a987b0f08f14846cebe35ab9e07c9453f07d256b",
     "components/chief/cordis.patch.yml": "9c85240fff752786e16a90d0d9a9c7a6e9a04054c0818c02bf12822da3818ca4",
     "components/chief/memory.js": "7311950c4c9d6069697d2f545fcb6ce8384b920245673fd32606206289f8d578",
     "components/chief/prompt.md": "16f7e1d62ea4442e6090c68f6f26df9ab553fd1db6a8e2cfa2094cc49ccb0bb3",
@@ -35,13 +35,14 @@
     "components/desktop/cordis.patch.yml": "baf407db574a246b9c8da03d0d863965d51f2eb7ade318be929ef713db7c8020",
     "components/desktop/README.md": "3b47f47243a3b58b146e328d9d21a5de7f16c3ae3417abd699ce05ea420d7322",
     "components/desktop/LICENSE": "4705f4d5cdffe68a173c233767273b24c5d1b8da45bd1b603fd69ae47378f2d9",
-    "components/git/package.json": "306bb6e5128e62b402ad9dc6c0d64638e8049bfb5765562e81f59cea0686c347",
-    "components/git/index.js": "abb724dc6f70382093219b4360880db7924e1254b5124d70630dcb4f93f81443",
-    "components/git/runtime.js": "fb7523632f494e4acdaca3ef76f21947d3e6d846f9c3c92a8c36b0dc46a0a649",
+    "components/git/package.json": "ae038a8efb718cbaf3bfde8271581cf7af3af6845a455eef1ea9cfb69797b88b",
+    "components/git/index.js": "f40a44e1b428d5e34bd986de0418b62448a39be7f51383bf83b3d93fd0ee7be9",
+    "components/git/runtime.js": "6ae6d90dd4a89d49981539c6f69cb82510e085a1c04e4b16506abc1df7b05ca1",
     "components/git/instructions.md": "1e71a1284f9fdbd7f4fdb010da1fa6ee22a897c364c25553b63ba79d44b0d99c",
     "components/git/cordis.patch.yml": "40e132e8d9aa623094bbffe61b7a5b701c96da126b1cf375c6063e8c6e0e56d3",
     "components/git/README.md": "72774b7a558847d50e080c56d7f3013c565ccb771512c5c91661f4e4696b9abf",
     "components/git/config.example.json": "cd85edc396a70721b0818f681cfa383539b8ebf460cdd817c6b6d21b8e3bd43f",
-    "components/git/LICENSE": "4705f4d5cdffe68a173c233767273b24c5d1b8da45bd1b603fd69ae47378f2d9"
+    "components/git/LICENSE": "4705f4d5cdffe68a173c233767273b24c5d1b8da45bd1b603fd69ae47378f2d9",
+    "components/git/connection-policy.js": "2a8817e3b3d5621dac65bb2338daa72ea5066511989cb456d62e186787767a4b"
   }
 }
