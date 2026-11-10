@@ -162,7 +162,7 @@ export function createController(store, host) {
       const result = await host.inspect(project.sessionId, job.requestId)
       if (project.job !== job || !['submitting', 'running', 'unknown'].includes(job.status)) return
       if (!result && (!afterRestart || job.status === 'unknown')) return
-      if (result) { Object.assign(job, result); job.notification = 'pending' }
+      if (result) { Object.assign(job, result); delete job.recoveryError; job.notification = 'pending' }
       else if (afterRestart) job.status = 'unknown'
       await store.save()
       if (result && host.notify) await this.notify(project, job)
