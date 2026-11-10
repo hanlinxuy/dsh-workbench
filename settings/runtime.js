@@ -1,12 +1,21 @@
 import { dirname, join } from 'node:path'
 import { withFileLock } from '@deepseek-ai/dsh-atomic-write'
 import { inspectPowerShell, installPowerShell } from './powershell.js'
+import { createIntranetSettings, demoIntranetAdapter } from './intranet.js'
 import { migrate } from '../cli/migrate.mjs'
 
 export const name = 'workbench-settings'
 export const inject = ['connection','configEditor','subprocess','sessionController']
-export function apply(ctx) {
+export function apply(ctx, config = {}) {
   const profile = dirname(ctx.configEditor.documentPath)
+  const intranet=createIntranetSettings(profile,config.intranetDemo?demoIntranetAdapter:ctx.get('workbenchIntranet'))
+  ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-intranet',methods:['POST'],requestBody:'buffered',async fetch(request){
+    try {
+      const body=await request.json()
+      if(!['status','save','test','models'].includes(body.action))throw Error('未知操作。')
+      return Response.json({ok:true,value:await intranet(body.action,body.input)})
+    }catch(error){return Response.json({ok:false,error:{message:error.message}})}
+  }}),'Workbench intranet settings')
   let lastMigration
   let busy = false, installation = { status: 'idle' }
   const lifetime = new AbortController()
