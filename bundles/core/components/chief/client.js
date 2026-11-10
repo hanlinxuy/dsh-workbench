@@ -412,4 +412,4 @@ function apply(ctx) {
   }
   ctx.slots.inject("plugins.detail.section", () => ctx.slots.register({ name: "plugins.detail.section", id: "workbench.environment", order: 5 }, Settings));
 }
-;return module.exports})();const original=module.exports.apply;module.exports.apply=(ctx,config)=>{original(ctx,config);settings.apply(ctx)};return Object.defineProperty({...module.exports},Symbol.toStringTag,{value:'Module'})}})
+;return module.exports})();const original=module.exports.apply;module.exports={...module.exports,apply:(ctx,config)=>{original(ctx,config);settings.apply(ctx)}};return Object.defineProperty({...module.exports},Symbol.toStringTag,{value:'Module'})}})

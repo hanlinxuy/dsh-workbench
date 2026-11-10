@@ -29,7 +29,7 @@ for (const kind of ['core', 'workbench']) {
     if (directory === 'chief') {
       const source = `import Preset from '@deepseek-ai/dsh-agent-preset'\nimport * as Chief from './index.js'\nexport const name = 'independent-chief'\nexport function apply(ctx, config = {}) {\n  ctx.plugin(Preset, { id: 'independent-chief', name: 'Chief 管家', description: '项目协调、独立 Markdown 记忆与任务验收', order: 20, plugins: [ { id: 'chief-persona-and-memory', name: new URL('../../persona/preset.js', import.meta.url).href, config: { instructions: 'Your persistent memory is the private Chief Markdown/Git store. Read it with chief_project list; update it with remember and review. Do not claim to remember project facts without reading this store.' } }, { id: 'chief-time-context', name: '@deepseek-ai/dsh-time-context' } ] })\n  ctx.plugin(Chief, config)\n}\n`
       files.set('components/chief/suite.js', Buffer.from(source))
-      files.set('components/chief/client.js', Buffer.from(show('client.js').toString().replace("id:'independent-chief'", `id:'${manifest.name}'`).replace('return Object.defineProperty({...module.exports}', `const settings=(()=>{const module={exports:{}};${settingsClient};return module.exports})();const original=module.exports.apply;module.exports.apply=(ctx,config)=>{original(ctx,config);settings.apply(ctx)};return Object.defineProperty({...module.exports}`)))
+      files.set('components/chief/client.js', Buffer.from(show('client.js').toString().replace("id:'independent-chief'", `id:'${manifest.name}'`).replace('return Object.defineProperty({...module.exports}', `const settings=(()=>{const module={exports:{}};${settingsClient};return module.exports})();const original=module.exports.apply;module.exports={...module.exports,apply:(ctx,config)=>{original(ctx,config);settings.apply(ctx)}};return Object.defineProperty({...module.exports}`)))
       patch = `    - id: independent-chief\n      name: ${manifest.name}\n`
     }
     components.push(patch)
@@ -54,7 +54,8 @@ for (const kind of ['core', 'workbench']) {
     patch += stringify(entries).trimEnd().split('\n').map(line => `    ${line}`).join('\n') + '\n'
   }
   for (const name of ['workbench.mjs','migrate.mjs']) files.set(`cli/${name}`, Buffer.from(await read(`bundles/cli/${name}`)))
-  files.set('settings/runtime.js', Buffer.from(await read('bundles/settings/runtime.js')))
+  for (const name of ['runtime.js','powershell.js']) files.set(`settings/${name}`, Buffer.from(await read(`bundles/settings/${name}`)))
+  for (const [lang,title,description] of [['zh-CN','环境设置','检测重复登记，迁移配置并管理 PowerShell 7。'],['en','Environment settings','Check component registration, migrate settings and set up PowerShell 7.']]) files.set(`settings/locale/${lang}.json`, Buffer.from(JSON.stringify({meta:{title,description}},null,2)))
   files.set('cordis.patch.yml', Buffer.from(patch))
   files.set('persona/package.json', Buffer.from(JSON.stringify({name: 'workbench-chief-persona', type: 'module'})))
   files.set('persona/preset.js', Buffer.from("export * from '../components/chief/preset.js'\n"))
