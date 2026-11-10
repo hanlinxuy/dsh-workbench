@@ -335,7 +335,92 @@ __export(stdin_exports, {
   apply: () => apply
 });
 module.exports = __toCommonJS(stdin_exports);
+
+// bundles/settings/intranet-client.js
 var import_react = require("react");
+var border = "1px solid var(--dsw-alias-border-primary, #444)";
+var field = { width: "100%", boxSizing: "border-box", padding: "10px 12px", border, borderRadius: 9, background: "transparent", color: "inherit", fontSize: 14 };
+var buttonStyle = { padding: "8px 13px", border, borderRadius: 9, background: "transparent", color: "inherit", cursor: "pointer", fontSize: 13 };
+var card = { border, borderRadius: 14, padding: 20, marginTop: 12 };
+function IntranetPanel() {
+  const [saved, setSaved] = (0, import_react.useState)(), [draft, setDraft] = (0, import_react.useState)(), [editing, setEditing] = (0, import_react.useState)(false), [busy, setBusy] = (0, import_react.useState)(false), [message, setMessage] = (0, import_react.useState)(""), [error, setError] = (0, import_react.useState)(""), [models, setModels] = (0, import_react.useState)([]);
+  const call = async (action, input2) => {
+    const r = await fetch("api/workbench-intranet", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, input: input2 }) });
+    const result = await r.json();
+    if (!result.ok) throw Error(result.error.message);
+    return result.value;
+  };
+  const accept = (value) => {
+    setSaved(value);
+    setDraft({ ...value, password: "", maasToken: "", git: value.git.map((row) => ({ ...row, token: "" })) });
+  };
+  (0, import_react.useEffect)(() => {
+    void call("status").then(accept).catch((e) => setError(e.message));
+  }, []);
+  const run = async (action) => {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await call(action, action === "save" ? draft : void 0);
+      if (action === "save") {
+        accept(result);
+        setEditing(false);
+        setModels([]);
+        setMessage("\u5DF2\u4FDD\u5B58\u5230\u672C\u673A\u3002");
+      }
+      if (action === "test") setMessage(result.demo ? "\u6F14\u793A\u6D4B\u8BD5\u5B8C\u6210\uFF0C\u672A\u8FDE\u63A5\u771F\u5B9E\u670D\u52A1\u3002" : result.connected ? "\u8FDE\u63A5\u6D4B\u8BD5\u901A\u8FC7\u3002" : "\u8FDE\u63A5\u672A\u901A\u8FC7\uFF0C\u8BF7\u68C0\u67E5\u5DF2\u4FDD\u5B58\u7684\u914D\u7F6E\u3002");
+      if (action === "models") {
+        setModels(result.models);
+        setMessage(result.demo ? "\u5DF2\u52A0\u8F7D\u793A\u4F8B\u6A21\u578B\uFF0C\u672A\u63A5\u5165\u771F\u5B9E MaaS\u3002" : `\u5DF2\u5237\u65B0 ${result.models.length} \u4E2A\u6A21\u578B\u3002`);
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const button = (label, fn, disabled = false) => (0, import_react.createElement)("button", { type: "button", style: buttonStyle, disabled: busy || disabled, onClick: fn }, label);
+  const input = (label, key, type = "text", placeholder = "") => (0, import_react.createElement)("label", { style: { display: "grid", gap: 6, fontSize: 13 } }, label, (0, import_react.createElement)("input", { style: field, type, value: draft[key], placeholder, autoComplete: type === "password" ? "new-password" : "off", onChange: (e) => setDraft({ ...draft, [key]: e.target.value }) }));
+  return (0, import_react.createElement)(
+    "section",
+    { "aria-label": "\u5185\u7F51\u8FDE\u63A5", style: { maxWidth: 680, margin: "28px 0", lineHeight: 1.6 } },
+    (0, import_react.createElement)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 } }, (0, import_react.createElement)("div", null, (0, import_react.createElement)("h2", { style: { margin: 0, fontSize: 20 } }, "\u5185\u7F51\u8FDE\u63A5"), (0, import_react.createElement)("p", { style: { margin: "4px 0 0", opacity: 0.65, fontSize: 13 } }, "\u4E00\u6B21\u914D\u7F6E\uFF0C\u8FDE\u63A5\u4F01\u4E1A\u6A21\u578B\u4E0E\u4EE3\u7801\u5E73\u53F0\u3002")), saved && !editing && button("\u7F16\u8F91\u8FDE\u63A5", () => setEditing(true))),
+    error && (0, import_react.createElement)("p", { role: "alert", style: { color: "#e99687" } }, error),
+    message && (0, import_react.createElement)("p", { role: "status", style: { fontSize: 13 } }, message),
+    !saved ? (0, import_react.createElement)("p", null, "\u6B63\u5728\u8BFB\u53D6\u8FDE\u63A5\u8BBE\u7F6E\u2026") : (0, import_react.createElement)(
+      "div",
+      null,
+      saved.adapter?.demo && (0, import_react.createElement)("p", { role: "note", style: { fontSize: 13, color: "#d8b470" } }, "\u6F14\u793A\u6A21\u5F0F \xB7 \u4E0D\u8FDE\u63A5\u5185\u7F51\uFF0C\u8BF7\u52FF\u586B\u5199\u771F\u5B9E\u51ED\u636E\u3002"),
+      (0, import_react.createElement)(
+        "div",
+        { style: card },
+        (0, import_react.createElement)("div", { style: { display: "flex", justifyContent: "space-between", gap: 12 } }, (0, import_react.createElement)("strong", null, "\u4F01\u4E1A\u8D26\u53F7\u4E0E\u6A21\u578B"), (0, import_react.createElement)("span", { style: { fontSize: 12, opacity: 0.65 } }, saved.adapter ? saved.adapter.demo ? "\u6F14\u793A\u9002\u914D\u5668" : "\u5DF2\u63A5\u5165\u9002\u914D\u5668" : "\u7B49\u5F85\u63A5\u5165\u9002\u914D\u5668")),
+        editing ? (0, import_react.createElement)("div", { style: { display: "grid", gap: 14, marginTop: 16 } }, input("\u5DE5\u53F7", "employeeId", "text", "\u8F93\u5165\u5DE5\u53F7"), input("\u8D26\u53F7\u5BC6\u7801", "password", "password", saved.passwordSaved ? "\u5DF2\u4FDD\u5B58\uFF0C\u7559\u7A7A\u4FDD\u7559" : "\u8F93\u5165\u8D26\u53F7\u5BC6\u7801"), input("MaaS Token", "maasToken", "password", saved.maasTokenSaved ? "\u5DF2\u4FDD\u5B58\uFF0C\u7559\u7A7A\u4FDD\u7559" : "\u8F93\u5165 MaaS Token")) : (0, import_react.createElement)("div", null, (0, import_react.createElement)("p", { style: { fontSize: 14 } }, saved.employeeId || "\u5C1A\u672A\u586B\u5199\u5DE5\u53F7"), (0, import_react.createElement)("p", { style: { fontSize: 13, opacity: 0.65 } }, `\u5BC6\u7801${saved.passwordSaved ? "\u5DF2\u4FDD\u5B58" : "\u672A\u586B\u5199"} \xB7 MaaS Token ${saved.maasTokenSaved ? "\u5DF2\u4FDD\u5B58" : "\u672A\u586B\u5199"}`)),
+        !editing && (0, import_react.createElement)("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, button("\u6D4B\u8BD5\u8FDE\u63A5", () => run("test"), !saved.adapter), button("\u5237\u65B0\u6A21\u578B", () => run("models"), !saved.adapter)),
+        models.length > 0 && (0, import_react.createElement)("ul", { style: { paddingLeft: 20, fontSize: 13 } }, ...models.map((m) => (0, import_react.createElement)("li", { key: m.id }, m.name, " \xB7 ", m.id)))
+      ),
+      (0, import_react.createElement)(
+        "div",
+        { style: card },
+        (0, import_react.createElement)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } }, (0, import_react.createElement)("strong", null, "Git \u5E73\u53F0"), editing && button("\u6DFB\u52A0\u5E73\u53F0", () => setDraft({ ...draft, git: [...draft.git, { id: crypto.randomUUID(), label: "", url: "", token: "" }] }))),
+        (editing ? draft.git : saved.git).length === 0 && (0, import_react.createElement)("p", { style: { fontSize: 13, opacity: 0.65 } }, "\u6DFB\u52A0 GitLab \u6216\u5176\u4ED6\u5185\u90E8\u4EE3\u7801\u5E73\u53F0\u3002"),
+        ...(editing ? draft.git : saved.git).map((row, i) => (0, import_react.createElement)(
+          "div",
+          { key: row.id, style: { borderTop: i ? border : void 0, paddingTop: 14, marginTop: 8 } },
+          editing ? (0, import_react.createElement)("div", { style: { display: "grid", gap: 10 } }, ...["label", "url", "token"].map((key) => (0, import_react.createElement)("label", { key, style: { display: "grid", gap: 5, fontSize: 13 } }, { label: "\u5E73\u53F0\u540D\u79F0", url: "\u5E73\u53F0\u5730\u5740", token: "\u8BBF\u95EE Token" }[key], (0, import_react.createElement)("input", { style: field, type: key === "token" ? "password" : "text", autoComplete: "off", value: row[key], placeholder: key === "url" ? "https://gitlab.example.internal" : key === "token" && row.tokenSaved ? "\u5DF2\u4FDD\u5B58\uFF0C\u7559\u7A7A\u4FDD\u7559" : "", onChange: (e) => setDraft({ ...draft, git: draft.git.map((r) => r.id === row.id ? { ...r, [key]: e.target.value } : r) }) }))), button("\u79FB\u9664\u5E73\u53F0", () => setDraft({ ...draft, git: draft.git.filter((r) => r.id !== row.id) }))) : (0, import_react.createElement)("div", null, (0, import_react.createElement)("div", null, row.label || "Git \u5E73\u53F0"), (0, import_react.createElement)("div", { style: { fontSize: 12, opacity: 0.65, overflowWrap: "anywhere" } }, row.url, " \xB7 Token ", row.tokenSaved ? "\u5DF2\u4FDD\u5B58" : "\u672A\u586B\u5199"))
+        ))
+      ),
+      editing ? (0, import_react.createElement)("div", { style: { display: "flex", gap: 8, marginTop: 16 } }, button("\u4FDD\u5B58\u8FDE\u63A5", () => run("save")), button("\u53D6\u6D88", () => {
+        accept(saved);
+        setEditing(false);
+      })) : (0, import_react.createElement)("p", { style: { fontSize: 12, opacity: 0.55, marginTop: 14 } }, "\u51ED\u636E\u53EA\u5B58\u4E8E\u672C\u673A\u3002\u5185\u7F51\u9002\u914D\u5668\u8D1F\u8D23\u9A8C\u8BC1\u8D26\u53F7\u3001\u53D1\u73B0\u6A21\u578B\u548C\u7ED1\u5B9A DSH \u8DEF\u7531\u3002")
+    )
+  );
+}
+
+// <stdin>
+var import_react2 = require("react");
 function apply(ctx) {
   const call = async (action) => {
     const response = await fetch("api/workbench-settings", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) });
@@ -345,12 +430,12 @@ function apply(ctx) {
   };
   function Settings({ subject }) {
     if (subject.kind !== "bundle" || !["dsh-workbench-core", "dsh-workbench-suite"].includes(subject.pkg.name)) return null;
-    return (0, import_react.createElement)(Panel);
+    return (0, import_react2.createElement)("div", null, (0, import_react2.createElement)(IntranetPanel), (0, import_react2.createElement)(Panel));
   }
   function Panel() {
-    const [data, setData] = (0, import_react.useState)(), [error, setError] = (0, import_react.useState)(""), [message, setMessage] = (0, import_react.useState)(""), [working, setWorking] = (0, import_react.useState)(false), [confirm, setConfirm] = (0, import_react.useState)(false);
+    const [data, setData] = (0, import_react2.useState)(), [error, setError] = (0, import_react2.useState)(""), [message, setMessage] = (0, import_react2.useState)(""), [working, setWorking] = (0, import_react2.useState)(false), [confirm, setConfirm] = (0, import_react2.useState)(false);
     const refresh = () => call("status").then(setData).catch((e) => setError(e.message));
-    (0, import_react.useEffect)(() => {
+    (0, import_react2.useEffect)(() => {
       void refresh();
       const timer = setInterval(refresh, 5e3);
       return () => clearInterval(timer);
@@ -373,41 +458,41 @@ function apply(ctx) {
       }
     };
     const disabled = working || data?.busy;
-    const button = (text, onClick) => (0, import_react.createElement)("button", { type: "button", disabled, onClick, style: { padding: "8px 14px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-primary, #555)", background: "transparent", color: "inherit", cursor: "pointer" } }, text);
-    const card = { padding: "16px 0", borderBottom: "1px solid var(--dsw-alias-border-primary, #444)" };
-    return (0, import_react.createElement)(
+    const button = (text, onClick) => (0, import_react2.createElement)("button", { type: "button", disabled, onClick, style: { padding: "8px 14px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-primary, #555)", background: "transparent", color: "inherit", cursor: "pointer" } }, text);
+    const card2 = { padding: "16px 0", borderBottom: "1px solid var(--dsw-alias-border-primary, #444)" };
+    return (0, import_react2.createElement)(
       "section",
       { "aria-label": "Workbench \u73AF\u5883\u8BBE\u7F6E", style: { maxWidth: 720, margin: "20px 0", lineHeight: 1.6 } },
-      (0, import_react.createElement)("h2", null, "\u73AF\u5883\u4E0E\u8FC1\u79FB"),
-      error && (0, import_react.createElement)("p", { role: "alert" }, error),
-      message && (0, import_react.createElement)("p", { role: "status" }, message),
-      !data ? (0, import_react.createElement)("p", null, "\u6B63\u5728\u68C0\u6D4B\u5F53\u524D DSH \u73AF\u5883\u2026") : (0, import_react.createElement)(
+      (0, import_react2.createElement)("h2", null, "\u73AF\u5883\u4E0E\u8FC1\u79FB"),
+      error && (0, import_react2.createElement)("p", { role: "alert" }, error),
+      message && (0, import_react2.createElement)("p", { role: "status" }, message),
+      !data ? (0, import_react2.createElement)("p", null, "\u6B63\u5728\u68C0\u6D4B\u5F53\u524D DSH \u73AF\u5883\u2026") : (0, import_react2.createElement)(
         "div",
         null,
-        (0, import_react.createElement)(
+        (0, import_react2.createElement)(
           "div",
-          { style: card },
-          (0, import_react.createElement)("h3", null, "\u7EC4\u4EF6\u767B\u8BB0"),
-          data.lastMigration?.application === "restart-required" && (0, import_react.createElement)("p", { role: "status" }, "\u914D\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u8BF7\u91CD\u542F DSH \u540E\u751F\u6548\u3002"),
-          data.lastMigration?.warnings?.length > 0 && (0, import_react.createElement)("p", { role: "status" }, data.lastMigration.warnings.join("\uFF1B")),
-          data.migration.changes ? (0, import_react.createElement)(
+          { style: card2 },
+          (0, import_react2.createElement)("h3", null, "\u7EC4\u4EF6\u767B\u8BB0"),
+          data.lastMigration?.application === "restart-required" && (0, import_react2.createElement)("p", { role: "status" }, "\u914D\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u8BF7\u91CD\u542F DSH \u540E\u751F\u6548\u3002"),
+          data.lastMigration?.warnings?.length > 0 && (0, import_react2.createElement)("p", { role: "status" }, data.lastMigration.warnings.join("\uFF1B")),
+          data.migration.changes ? (0, import_react2.createElement)(
             "div",
             null,
-            (0, import_react.createElement)("p", null, `\u53D1\u73B0 ${data.migration.changes} \u4E2A\u53EF\u8FC1\u79FB\u7684\u72EC\u7ACB\u7EC4\u4EF6\u3002\u8FC1\u79FB\u4F1A\u5907\u4EFD\u914D\u7F6E\u3001\u4FDD\u7559\u539F\u8BBE\u7F6E\u548C\u6570\u636E\uFF0C\u5E76\u53BB\u6389\u91CD\u590D\u767B\u8BB0\u3002`),
-            (0, import_react.createElement)("p", null, data.migration.components.join(" \xB7 ")),
-            confirm ? (0, import_react.createElement)("div", null, (0, import_react.createElement)("p", null, "\u53EA\u5904\u7406\u5F53\u524D DSH\u3002\u8BF7\u5728\u4EFB\u52A1\u7ED3\u675F\u540E\u6267\u884C\uFF1B\u82E5\u5BBF\u4E3B\u8981\u6C42\u91CD\u542F\uFF0C\u9875\u9762\u4F1A\u660E\u786E\u63D0\u793A\u3002"), button("\u786E\u8BA4\u8FC1\u79FB", () => run("migrate"))) : button("\u67E5\u770B\u5E76\u8FC1\u79FB", () => setConfirm(true))
-          ) : (0, import_react.createElement)("p", null, "\u7EC4\u4EF6\u767B\u8BB0\u6B63\u5E38\uFF0C\u65E0\u9700\u8FC1\u79FB\u3002")
+            (0, import_react2.createElement)("p", null, `\u53D1\u73B0 ${data.migration.changes} \u4E2A\u53EF\u8FC1\u79FB\u7684\u72EC\u7ACB\u7EC4\u4EF6\u3002\u8FC1\u79FB\u4F1A\u5907\u4EFD\u914D\u7F6E\u3001\u4FDD\u7559\u539F\u8BBE\u7F6E\u548C\u6570\u636E\uFF0C\u5E76\u53BB\u6389\u91CD\u590D\u767B\u8BB0\u3002`),
+            (0, import_react2.createElement)("p", null, data.migration.components.join(" \xB7 ")),
+            confirm ? (0, import_react2.createElement)("div", null, (0, import_react2.createElement)("p", null, "\u53EA\u5904\u7406\u5F53\u524D DSH\u3002\u8BF7\u5728\u4EFB\u52A1\u7ED3\u675F\u540E\u6267\u884C\uFF1B\u82E5\u5BBF\u4E3B\u8981\u6C42\u91CD\u542F\uFF0C\u9875\u9762\u4F1A\u660E\u786E\u63D0\u793A\u3002"), button("\u786E\u8BA4\u8FC1\u79FB", () => run("migrate"))) : button("\u67E5\u770B\u5E76\u8FC1\u79FB", () => setConfirm(true))
+          ) : (0, import_react2.createElement)("p", null, "\u7EC4\u4EF6\u767B\u8BB0\u6B63\u5E38\uFF0C\u65E0\u9700\u8FC1\u79FB\u3002")
         ),
-        (0, import_react.createElement)(
+        (0, import_react2.createElement)(
           "div",
-          { style: card },
-          (0, import_react.createElement)("h3", null, "PowerShell 7"),
-          (0, import_react.createElement)("p", null, data.pwsh.message),
+          { style: card2 },
+          (0, import_react2.createElement)("h3", null, "PowerShell 7"),
+          (0, import_react2.createElement)("p", null, data.pwsh.message),
           data.pwsh.state === "missing" && button("\u5B89\u88C5 PowerShell 7", () => run("install-pwsh")),
-          data.installation.status !== "idle" && (0, import_react.createElement)("p", { role: "status" }, data.installation.message),
-          data.installation.output && (0, import_react.createElement)("pre", { style: { whiteSpace: "pre-wrap" } }, data.installation.output)
+          data.installation.status !== "idle" && (0, import_react2.createElement)("p", { role: "status" }, data.installation.message),
+          data.installation.output && (0, import_react2.createElement)("pre", { style: { whiteSpace: "pre-wrap" } }, data.installation.output)
         ),
-        (0, import_react.createElement)("div", { style: { marginTop: 16 } }, button("\u91CD\u65B0\u68C0\u6D4B", refresh))
+        (0, import_react2.createElement)("div", { style: { marginTop: 16 } }, button("\u91CD\u65B0\u68C0\u6D4B", refresh))
       )
     );
   }
