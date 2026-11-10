@@ -148,6 +148,11 @@ test('restart remains usable and blocks retry if DSH inspection fails', async ()
   assert.equal(job.status,'unknown')
   assert.match(job.recoveryError,/inspect/)
   assert.equal(state.projects[0].owner,'user')
+  const recovered=createController({state,save:async()=>{}},{inspect:async()=>({status:'completed',text:'recovered report'})})
+  await recovered.recover()
+  assert.equal(job.status,'completed')
+  assert.equal(job.recoveryError,undefined)
+  assert.equal(state.projects[0].owner,'user')
 })
 
 test('uncertain notification remains visible without resending on restart', async () => {
