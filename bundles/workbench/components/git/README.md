@@ -64,7 +64,7 @@ HTTP API 和 Git HTTP 不跟随重定向，避免检查一个地址却请求另�
 
 - “查看 workbench 的状态和差异，不修改。”
 - “仅暂存 src/main.ts 并提交这次修复；不要推送。”
-- “将当前 HEAD 推送到 workbench 的 company remote 的 feature/fix 分支。”
+- “将同名本地分支 推送到 workbench 的 company remote 的 feature/fix 分支。”
 - “在 workbench 创建一条 issue，内容是……。”
 
 支持已有仓库、已有分支切换、精确文件暂存和提交、fetch、显式分支 push。
@@ -116,3 +116,5 @@ SSH remote 不使用 HTTP_PROXY，需由内网既有 SSH ProxyCommand/ProxyJump 
 ## 当前工作区自动读取
 
 `repository` 留空或使用 `current`，自动识别会话工作目录的 Git 根目录与 origin。无需登记即可读取状态、日志、分支和 GitHub Issues。GitHub 优先沿用 GH_TOKEN/GITHUB_TOKEN 或已有 gh 登录；公共仓库可匿名读取。未知平台仍可读取本地 Git，API 适配可按域名配置。自动发现不授予写权限，已有仓库规则优先；外网 push 仍禁止。
+
+设置页默认是“读取 + 创建 Issue”，不是纯只读。显式 `apiWrites` 是管理员上限（空数组拒绝所有 API 写入），设置页只能在其范围内放行；未指定 `apiWrites` 时可由设置页管理。`localWrite:false` 和 remote `push:false` 同样不可被开关覆盖。catalog 返回有效权限和 permissionSource。Push 的 branch 同时指定本地源分支与远端目标分支，不使用当前 HEAD。

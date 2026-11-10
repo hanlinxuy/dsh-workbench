@@ -22,8 +22,9 @@ export function createController(store, host) {
       const projects = state.projects.map(project => {
         const job = project.job
         const memory = store.memory?.get(project.id) ?? emptyMemory()
+        const memoryError = store.memory?.errorFor?.(project.id) ?? null
         const acceptance = job ? store.memory?.review(job.requestId) ?? { verdict: 'pending' } : null
-        if (!job) return { ...project, memory, acceptance, job: null }
+        if (!job) return { ...project, memory, memoryError, acceptance, job: null }
         const { prompt, text, ...summary } = job
         const timing = {}
         let takeoverStatement = `${project.name}：当前记录没有可比较的桌面接手和任务完成事件；不能推断此前是否接手。`
@@ -41,7 +42,7 @@ export function createController(store, host) {
         }
         const receipt = reads.get(project.id)
         const readThisTurn = receipt?.requestId === job.requestId ? { chars: receipt.chars, complete: receipt.complete } : { chars: 0, complete: false }
-        return { ...project, memory, acceptance, job: { ...summary, resultLength: text?.length ?? 0, timing, takeoverStatement, readThisTurn } }
+        return { ...project, memory, memoryError, acceptance, job: { ...summary, resultLength: text?.length ?? 0, timing, takeoverStatement, readThisTurn } }
       })
       events.sort((a, b) => a.at - b.at)
       return { projects, timeline: events, memoryDirectory: store.memory?.directory, memoryError: store.memory?.error ?? null, timelineNote: 'Only recorded current-job and latest desktop takeover events are included; equal timestamps do not establish order.' }
@@ -102,6 +103,8 @@ export function createController(store, host) {
     },
     async dispatch(name, text, { criteria, maxChars } = {}) {
       const project = find(name)
+      const memoryError = store.memory?.errorFor?.(project.id)
+      if (memoryError) throw new Error(`Repair project memory before dispatch: ${memoryError}`)
       const requestId = randomUUID()
       if (criteria !== undefined && (typeof criteria !== 'string' || !criteria.trim() || criteria.length > 12000)) throw new Error('Invalid acceptance criteria')
       if (maxChars !== undefined && (!Number.isInteger(maxChars) || maxChars < 1 || maxChars > 100000)) throw new Error('Invalid maxChars')
