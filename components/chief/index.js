@@ -6,7 +6,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { openStore } from './store.js'
 import { createActivity, createLifecycle, startPolling } from './lifecycle.js'
 import { createController } from './controller.js'
-import { readResult } from './history.js'
+import { readResult, readSessionEvents } from './history.js'
 import { restoreChiefPreset } from './chief-session.js'
 
 export const name = 'independent-chief'
@@ -47,13 +47,13 @@ export function apply(ctx, config = {}) {
           return sessionId
         },
         async inspect(sessionId, requestId) {
-          const snapshot = await ctx.sessionController.inspect(sessionId, AbortSignal.timeout(30000))
-          return readResult(snapshot.events, requestId)
+          const events = await readSessionEvents(ctx.sessionController, sessionId, AbortSignal.timeout(30000))
+          return readResult(events, requestId)
         },
         async audit(sessionId, requestId) {
-          const snapshot = await ctx.sessionController.inspect(sessionId, AbortSignal.timeout(30000))
+          const events = await readSessionEvents(ctx.sessionController, sessionId, AbortSignal.timeout(30000))
           let current, selected
-          for (const event of snapshot.events) {
+          for (const event of events) {
             if (event.type === 'turn/start') current = []
             if (event.type === 'user/message' && event.data.source?.rpcId === requestId) selected = current
             if (current && event.type === 'tool/call') current.push({ type: 'call', name: event.data.name, arguments: event.data.arguments })
@@ -63,9 +63,9 @@ export function apply(ctx, config = {}) {
           throw new Error('No complete task audit found')
         },
         async inspectNotice(requestId) {
-          const snapshot = await ctx.sessionController.inspect(opened.state.chiefSessionId, AbortSignal.timeout(30000))
+          const events = await readSessionEvents(ctx.sessionController, opened.state.chiefSessionId, AbortSignal.timeout(30000))
           const id = `chief-report:${requestId}`
-          return snapshot.events.some(event => event.type === 'user/message' && event.data.source?.rpcId === id || event.type === 'agent/inbox/spliced' && (event.data?.inserted ?? []).some(message => message.source?.rpcId === id))
+          return events.some(event => event.type === 'user/message' && event.data.source?.rpcId === id || event.type === 'agent/inbox/spliced' && (event.data?.inserted ?? []).some(message => message.source?.rpcId === id))
         },
         async notify(project, job) {
           await ctx.sessionController.prompt({ sessionId: opened.state.chiefSessionId, requestId: `chief-report:${job.requestId}`, mode: 'queue', content: [{ type: 'text', text: `项目 ${project.name} 的任务已结束，状态 ${job.status}。调用 chief_project 的 list 和 read 获取完整结果，核对验收标准和 audit 轨迹，调用 review 持久化验收、阻碍及下一步，再简洁汇报；执行完成不等于验收通过。不要未经用户要求追加任务。` }] }, AbortSignal.timeout(30000))

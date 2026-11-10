@@ -1,16 +1,16 @@
 {
   "commits": {
-    "chief": "9b6569f800d562b2ab0bc3678a984c46c70dd2dc",
+    "chief": "fbaa94039c3649c2c4c99e73b459d2f79d492525",
     "browser": "9b6569f800d562b2ab0bc3678a984c46c70dd2dc",
     "desktop": "9d0129fe68091c8408a959e3f29a0eb93b346659",
     "git": "9b6569f800d562b2ab0bc3678a984c46c70dd2dc"
   },
   "sha256": {
     "components/chief/package.json": "63e1e3a01b8f0c0a7e4ee3615ba0c221e29ab49e82030ee20c1d4ee7fa204600",
-    "components/chief/index.js": "03f920b2a9318d493857ae7a11381e03477e15ddc8c64d4c8634928cae72a270",
+    "components/chief/index.js": "0951f9c3e47b055a8884154a82243745bd358ff1dfc7b81025964fb010ae11cb",
     "components/chief/chief-session.js": "379377a30ad00e72fd2a5eb7380dbba95c50d7837bdd99d99593a3e610d3a01b",
     "components/chief/controller.js": "d7dda49dfdaaec7541ff0bd52add4634b9154de2deb88366326f14c05779dc2f",
-    "components/chief/history.js": "07f94691c60e6b6c9516b9b4609d8e10f57b0158cd5a283ab3fe01dccf2a06ef",
+    "components/chief/history.js": "6897edc6a7f43c23999531b5526ded273b64de43f8b05820309ac261a349ceb9",
     "components/chief/state.js": "57cab28ccf3f1a24a41adae5e68c8180c26df19a2009f5b8106cbf45c2d41f04",
     "components/chief/store.js": "674bdf635c403828efa4aa9457c84cc36e9e46b0a904c3c9103b319e9c282200",
     "components/chief/lifecycle.js": "aa5f1074aae0391235d18a74e653ea2de4ec95236f80c9d0cc3452e6d481a6d7",
