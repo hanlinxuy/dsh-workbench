@@ -7,7 +7,7 @@ export function createIntranetSettings(profile, adapter) {
   const directory=join(profile,'.workbench-private'), file=join(directory,'connections.json')
   let writing=false
   const read=()=>readFile(file,'utf8').then(JSON.parse,error=>{if(error.code==='ENOENT')return {employeeId:'',password:'',maasToken:'',git:[]};throw error})
-  const view=value=>({employeeId:value.employeeId,passwordSaved:!!value.password,maasTokenSaved:!!value.maasToken,git:value.git.map(({id,label,url,token})=>({id,label,url,tokenSaved:!!token})),adapter:adapter?{name:adapter.name,demo:adapter.demo===true}:null})
+  const view=value=>({employeeId:value.employeeId,passwordSaved:!!value.password,maasTokenSaved:!!value.maasToken,git:value.git.map(({id,label,url,token,permissions})=>({id,label,url,tokenSaved:!!token,permissions:{write:permissions?.write===true,push:permissions?.push===true}})),adapter:adapter?{name:adapter.name,demo:adapter.demo===true}:null})
   return async (action,input) => {
     const saved=await read()
     if(action==='status')return view(saved)
@@ -20,7 +20,8 @@ export function createIntranetSettings(profile, adapter) {
         ids.add(row.id)
         const url=new URL(row.url)
         if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.search||url.hash)throw Error('平台地址请填写不含凭据、查询参数的 HTTP(S) 地址。')
-        return {id:row.id,label:row.label.trim().slice(0,100),url:url.href,token:row.token||saved.git.find(old=>old.id===row.id)?.token||''}
+        if(row.permissions!==undefined && (!row.permissions || typeof row.permissions.write!=='boolean' || typeof row.permissions.push!=='boolean'))throw Error('权限选项格式不正确。')
+        return {permissions:{write:row.permissions?.write===true,push:row.permissions?.push===true},id:row.id,label:row.label.trim().slice(0,100),url:url.href,token:row.token||saved.git.find(old=>old.id===row.id)?.token||''}
       })
       const next={employeeId:input.employeeId.trim().slice(0,100),password:input.password||saved.password,maasToken:input.maasToken||saved.maasToken,git}
       writing=true
