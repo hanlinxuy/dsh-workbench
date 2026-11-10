@@ -7,7 +7,7 @@ export function apply(ctx) {
   }
   function Settings({subject}) {
     if(subject.kind!=='bundle'||!['dsh-workbench-core','dsh-workbench-suite'].includes(subject.pkg.name))return null
-    return h('div',null,h(IntranetPanel),h(Panel))
+    return h(Panel)
   }
   function Panel(){
     const [data,setData]=useState(),[error,setError]=useState(''),[message,setMessage]=useState(''),[working,setWorking]=useState(false),[confirm,setConfirm]=useState(false)
@@ -40,5 +40,6 @@ export function apply(ctx) {
           data.installation.status!=='idle'&&h('p',{role:'status'},data.installation.message),data.installation.output&&h('pre',{style:{whiteSpace:'pre-wrap'}},data.installation.output)),
         h('div',{style:{marginTop:16}},button('重新检测',refresh))))
   }
+  ctx.slots.inject('settings.section',()=>ctx.slots.register({name:'settings.section',id:'workbench-intranet',order:35,label:()=> '内网连接'},IntranetPanel))
   ctx.slots.inject('plugins.detail.section',()=>ctx.slots.register({name:'plugins.detail.section',id:'workbench.environment',order:5},Settings))
 }
