@@ -1,3 +1,4 @@
+import {GatewayFields} from './gateway-client.js'
 import { createElement as h, useEffect, useState } from 'react'
 
 const border='1px solid var(--dsw-alias-border-primary, #444)'
@@ -38,6 +39,7 @@ export function IntranetPanel(){
         ...(editing?draft.git:saved.git).map((row,i)=>h('div',{key:row.id,style:{borderTop:i?border:undefined,paddingTop:14,marginTop:8}},
           editing?h('div',{style:{display:'grid',gap:10}},...['label','url','token'].map(key=>h('label',{key,style:{display:'grid',gap:5,fontSize:13}},{label:'平台名称',url:'平台地址',token:'访问 Token'}[key],h('input',{style:field,type:key==='token'?'password':'text',autoComplete:'off',value:row[key],placeholder:key==='url'?'https://gitlab.example.internal':key==='token'&&row.tokenSaved?'已保存，留空保留':'',onChange:e=>setDraft({...draft,git:draft.git.map(r=>r.id===row.id?{...r,[key]:e.target.value}:r)})}))),h('div',{style:{borderTop:border,paddingTop:12,display:'grid',gap:10}},h('div',{style:{fontSize:13,opacity:.65}},'默认允许读取和创建 Issue'),...['write','push'].map(key=>h('label',{key,style:{display:'flex',gap:10,alignItems:'center',fontSize:14}},h('input',{type:'checkbox',checked:row.permissions?.[key]===true,onChange:e=>setDraft({...draft,git:draft.git.map(r=>r.id===row.id?{...r,permissions:{write:r.permissions?.write===true,push:r.permissions?.push===true,[key]:e.target.checked}}:r)})}),key==='write'?'允许写入（提交、分支、评论和 MR）':'允许 Push')),h('p',{style:{fontSize:12,opacity:.55,margin:0}},'保存后对 Workbench Git 生效。外网限制、Token 权限和合并分支规则仍适用。')),button('移除平台',()=>setDraft({...draft,git:draft.git.filter(r=>r.id!==row.id)})))
           :h('div',null,h('div',null,row.label||'Git 平台'),h('div',{style:{fontSize:12,opacity:.65,overflowWrap:'anywhere'}},row.url,' · Token ',row.tokenSaved?'已保存':'未填写'),h('div',{style:{fontSize:12,opacity:.65,marginTop:6}},'读取 · 创建 Issue',row.permissions?.write?' · 写入已开启':' · 写入关闭',row.permissions?.push?' · Push 已开启':' · Push 关闭'))))),
+      saved.adapter?.backends?.length>0&&h(GatewayFields,{saved,draft,setDraft,editing,call}),
       editing?h('div',{style:{display:'flex',gap:8,marginTop:16}},button('保存连接',()=>run('save')),button('取消',()=>{accept(saved);setEditing(false)}))
         :h('p',{style:{fontSize:12,opacity:.55,marginTop:14}},'凭据只存于本机。内网适配器负责验证账号、发现模型和绑定 DSH 路由。')))
 }

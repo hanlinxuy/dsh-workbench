@@ -100,7 +100,15 @@ test('manual Markdown changes load on restart; malformed notes are not overwritt
     await store.close()
     await assert.rejects(store.memory.update(store.state.projects[0], { source: 'late' }), /closing/)
     await writeFile(file, '# broken\n')
-    await assert.rejects(openStore(dir), /Missing/)
+    store = await openStore(dir)
+    assert.match(store.memory.error, /Missing/)
+    assert.ok(store.memory.error.includes(file))
+    await assert.rejects(store.memory.update(store.state.projects[0], {source:'overwrite'}), /Repair/)
+    const recovered = createController(store, {createSession: async () => 'b', prompt: async () => {}})
+    await assert.rejects(recovered.dispatch('A', 'task'), /Repair/)
+    await recovered.register('B', '/b')
+    await recovered.dispatch('B', 'unaffected')
+    await store.close()
     assert.equal(await readFile(file, 'utf8'), '# broken\n')
     store = null
   } finally { if (store) await store.close(); await rm(dir, { recursive: true, force: true }) }

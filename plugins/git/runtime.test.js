@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { execFileSync } from 'node:child_process'
-import { createGit } from './runtime.js'
+import { createGit, remoteHost } from './runtime.js'
 
 test('Git local writes, configured internal push, external denial and changed remote', async () => {
   const home = await mkdtemp(join(tmpdir(), 'wb-git-test-'))
@@ -29,6 +29,9 @@ test('Git local writes, configured internal push, external denial and changed re
     git('branch', 'before-change')
     await writeFile(join(repo, 'file.txt'), 'second\n')
     git('add', 'file.txt'); git('commit', '-m', 'Second commit')
+    await run({action:'push',repository:'project',branch:'before-change'})
+    assert.equal(execFileSync('git',['--git-dir',remote,'rev-parse','refs/heads/before-change'],{encoding:'utf8'}),git('rev-parse','before-change'))
+    assert.notEqual(git('rev-parse','before-change'),git('rev-parse','HEAD'))
     assert.doesNotMatch(await run({ action: 'log', repository: 'project', branch: 'before-change' }), /Second commit/)
     assert.match(await run({ action: 'log', repository: 'project' }), /Second commit/)
     await assert.rejects(run({ action: 'log', repository: 'project', branch: '--all' }), /Valid branch/)
@@ -102,4 +105,10 @@ test('external API permits only configured issue/comment operations without send
   ])
   for (const action of ['repo_delete', 'file_update', 'pull_create', 'merge']) await assert.rejects(run({ action, repository: 'fixture' }), /Unsupported/)
   assert.equal(sent.length, 2)
+})
+
+test('Windows and POSIX local remotes precede SCP parsing',()=>{
+ for(const url of ['C:\\work\\mirror.git','C:/work/mirror.git','\\\\server\\share\\mirror.git','/work/mirror.git','file:///C:/work/mirror.git']) assert.equal(remoteHost(url),'local')
+ assert.equal(remoteHost('git@example.org:org/repo.git'),'example.org')
+ assert.equal(remoteHost('https://example.org/org/repo.git'),'example.org')
 })

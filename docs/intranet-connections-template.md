@@ -70,7 +70,7 @@ ctx.provide('workbenchIntranet', adapter)
 
 每个平台默认允许读取和创建 Issue；“允许写入”和“允许 Push”默认关闭，旧连接无权限字段时同样按关闭处理。编辑后点击“保存连接”才生效，重启后保留。写入开关覆盖 Workbench Git 的暂存、提交、切分支、评论和 MR 写操作；Push 单独控制。Token 仍需有对应服务端权限。
 
-Workbench Git 每次执行时读取当前 profile 私有连接设置，以配置平台的 hostname 匹配。未登记到此页的平台继续沿用已有 Git 配置策略；同一 host 多条登记时取交集。开启后对已配置内网平台生效；外网 Push/MR 写入限制和 MR 合并目标分支白名单仍有效。平台类型、API 地址、Token 绑定由内网适配器或 Git 配置提供，本页不是平台自动探测器。
+Workbench Git 每次执行时读取当前 profile 私有连接设置，以配置平台的 hostname 匹配。未登记到此页的平台继续沿用已有 Git 配置策略；同一 host 多条登记时取交集。0.2.7 起显式 apiWrites、localWrite:false、push:false 是管理员上限，设置页只能收紧或在上限内放行；开启后对已配置内网平台生效；外网 Push/MR 写入限制和 MR 合并目标分支白名单仍有效。平台类型、API 地址、Token 绑定由内网适配器或 Git 配置提供，本页不是平台自动探测器。
 
 该约束覆盖 `workbench_git` 工具，不是 Shell、浏览器或其他 Git 客户端的系统级防火墙。内网适配器拿到的每个 git 项增加 `permissions: {write, push}`，也必须执行对应策略，不得把 Token 存在视为写入授权。
 

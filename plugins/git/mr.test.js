@@ -69,7 +69,7 @@ test('merge requires internal platform and explicit exact target allowlist befor
     [{}, { mergeTargetBranches: ['main'] }, undefined],
   ]) {
     const run = createGit(config({ apiWrites: ['mr_merge'], ...platform }, repo))
-    await assert.rejects(run(args('mr_merge', { number: 7, target_branch: target })), /internal|allowlisted/)
+    await assert.rejects(run(args('mr_merge', { number: 7, target_branch: target })), /internal|allowlisted|disabled/)
   }
   assert.equal(sent.length, 0)
 })

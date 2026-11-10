@@ -112,3 +112,9 @@ GitLab MR 读操作可用，写操作默认禁止。内部平台可显式允许�
 ## 0.2.1 原生执行与已有配置迁移
 
 新装 OPS 默认关闭，优先保留 DSH 原生工具。已有独立 X Memory / Context / OPS / ChatGPT 的 profile 使用[离线迁移命令](native-infrastructure.md)，保留配置、启停与原数据，移除重复登记。该文档也包含 pwsh7 检测与显式安装入口。
+
+## 0.2.7：修复与可选模型网关
+
+新增 `workbench-provider-gateway`，默认关闭。启用前配置固定回环端口和可信后端，复用“内网连接”的账号、请求头、模型刷新和手动调用测试。详见 [网关说明](../plugins/provider-gateway/README.md)。没有自动复制登录态、启用网关或发布共享凭据。
+
+发布必须通过 `pnpm check`：固定组件的每个分发文件必须与当前源码一致，版本也必须一致。`provenance.json` 的 versions、commits、sha256 分别给出组件版本、固定提交与文件校验值。历史 0.1.5 套装已知落后源码，不再作为 MR/Browser 修复的安装目标；升级到已验收 0.2.7（宿主需 0.2.2-rc.1）。

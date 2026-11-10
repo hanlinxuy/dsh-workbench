@@ -32,8 +32,12 @@ export async function openMemory(directory, execute = exec) {
   await git(['init', '--quiet'])
   const records = new Map()
   const reviews = new Map()
+  const errors = new Map()
   for (const file of await readdir(join(directory, 'projects'))) {
-    if (file.endsWith('.md')) records.set(file.slice(0, -3), parseMemory(await readFile(join(directory, 'projects', file), 'utf8')))
+    if (file.endsWith('.md')) {
+      const path = join(directory, 'projects', file)
+      await readFile(path, 'utf8').then(text => records.set(file.slice(0, -3), parseMemory(text))).catch(error => errors.set(path, `${path}: ${error.message}`))
+    }
   }
   // Reviews use a fixed Markdown schema as well; only the verdict is needed
   // by the compact board. The complete evidence remains in the review file.
@@ -41,7 +45,7 @@ export async function openMemory(directory, execute = exec) {
     if (file.endsWith('.md')) {
       const text = await readFile(join(directory, 'reviews', file), 'utf8')
       const verdict = text.match(/\n## verdict\n\n> (accepted|needs_changes|blocked)\n/)
-      if (!verdict) throw new Error('Invalid Chief review Markdown')
+      if (!verdict) { const path = join(directory, 'reviews', file); errors.set(path, `${path}: Invalid Chief review Markdown`); continue }
       reviews.set(file.slice(0, -3), { verdict: verdict[1], file: join(directory, 'reviews', file) })
     }
   }
@@ -53,8 +57,11 @@ export async function openMemory(directory, execute = exec) {
     directory,
     get: id => records.get(id) ?? emptyMemory(),
     review: requestId => reviews.get(requestId) ?? null,
-    get error() { return lastError },
+    errorFor: id => errors.get(join(directory, 'projects', `${id}.md`)) ?? null,
+    get error() { return [...errors.values(), lastError].filter(Boolean).join('\n') || null },
     update(project, patch, review) {
+      const issue = errors.get(join(directory, 'projects', `${project.id}.md`)) || (review && errors.get(join(directory, 'reviews', `${review.requestId}.md`)))
+      if (issue) return Promise.reject(new Error(`Repair memory file and restart before writing: ${issue}`))
       if (closing) return Promise.reject(new Error('Memory store is closing'))
       const operation = pending.then(async () => {
         const value = { ...(records.get(project.id) ?? emptyMemory()), ...patch, updatedAt: new Date().toISOString() }

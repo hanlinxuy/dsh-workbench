@@ -54,3 +54,10 @@ test('open rejects script and non-HTTP navigation before launching AB', async ()
     assert.deepEqual(await readdir(home), [])
   } finally { await rm(home, { recursive: true, force: true }) }
 })
+
+ test('child environment excludes unrelated credentials', async()=>{
+ const home=await mkdtemp(join(tmpdir(),'env-boundary-'));process.env.WORKBENCH_TEST_SECRET='never-forward';
+ const calls=[];const run=createBrowser({home},async(file,args,options)=>{calls.push({args,env:options.env});return {stdout:'{"ok":true}',stderr:''}});
+ try{await run({action:'version'});assert.equal(calls[0].env.WORKBENCH_TEST_SECRET,undefined);assert.ok(calls[0].env.PATH);}
+ finally{delete process.env.WORKBENCH_TEST_SECRET;await rm(home,{recursive:true,force:true})}
+ })

@@ -16,7 +16,7 @@ test('saved UI permissions default deny, grant and revoke writes without restart
   const form={employeeId:'test',password:'',maasToken:'',git:[{id:'one',label:'GitLab',url:'https://git.example.internal',token:''}]}
   await settings('save',form)
   const policy=connectionPolicy(p)
-  const config={platforms:{gitlab:{network:'internal',kind:'gitlab',hosts:['git.example.internal'],apiBase:'https://git.example.internal/api/v4',apiWrites:['mr_create']}},repositories:{test:{path:p,platform:'gitlab',apiRepo:'org/repo',localWrite:true,remotes:{origin:{platform:'gitlab',url:'https://git.example.internal/org/repo.git',push:true,fetch:true}}}}}
+  const config={platforms:{gitlab:{network:'internal',kind:'gitlab',hosts:['git.example.internal'],apiBase:'https://git.example.internal/api/v4',apiWrites:['issue_create','comment_create','mr_create']}},repositories:{test:{path:p,platform:'gitlab',apiRepo:'org/repo',localWrite:true,remotes:{origin:{platform:'gitlab',url:'https://git.example.internal/org/repo.git',push:true,fetch:true}}}}}
   const run=createGit(config,async(file,args)=>{commands.push(args);return {stdout:args.includes('get-url')?'https://git.example.internal/org/repo.git\n':''}},policy)
   await run({action:'status',repository:'test'})
   await run({action:'issue_create',repository:'test',title:'test',body:'test'})
@@ -29,6 +29,9 @@ test('saved UI permissions default deny, grant and revoke writes without restart
   await run({action:'stage',repository:'test',paths:['file']})
   await run({action:'push',repository:'test',branch:'main'})
   await run({action:'comment_create',repository:'test',number:1,body:'test'})
+  const restricted=createGit({...config,platforms:{gitlab:{...config.platforms.gitlab,apiWrites:[]}}},async()=>{throw Error('unexpected command')},policy)
+  await assert.rejects(restricted({action:'issue_create',repository:'test',title:'x',body:'x'}),/disabled/)
+  await assert.rejects(restricted({action:'comment_create',repository:'test',number:1,body:'x'}),/disabled/)
   assert.equal(requests,2);assert.ok(commands.some(a=>a.includes('push')))
   await settings('save',form)
   await assert.rejects(run({action:'stage',repository:'test',paths:['file']}),/disabled/)

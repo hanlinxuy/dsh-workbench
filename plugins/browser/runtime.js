@@ -9,7 +9,7 @@ const exec = promisify(execFile)
 const require = createRequire(import.meta.url)
 const launcher = join(dirname(require.resolve('agent-browser/package.json')), 'bin/agent-browser.js')
 
-export function createBrowser({ home, executablePath, headed = false }) {
+export function createBrowser({ home, executablePath, headed = false }, execute = exec) {
   const queues = new Map()
   return async ({ action, account = 'default', target, value }, signal) => {
     if (!/^[a-zA-Z0-9_-]{1,48}$/.test(account)) throw new Error('account must contain 1-48 letters, digits, underscores or hyphens')
@@ -48,13 +48,13 @@ export function createBrowser({ home, executablePath, headed = false }) {
       await mkdir(root, { recursive: true, mode: 0o700 })
       const config = join(root, 'browser.json')
       await writeFile(config, '{}', { mode: 0o600 })
-      const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('AGENT_BROWSER_')))
+      const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|HOME|USERPROFILE|TMP|TEMP|TMPDIR|LANG|LC_.*|SystemRoot|SYSTEMROOT|WINDIR|COMSPEC|PATHEXT|DISPLAY|WAYLAND_DISPLAY|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY)$/i.test(key)))
       const args = action === 'version' ? ['--version'] : [
         '--config', config, '--session', session, '--profile', join(root, 'profile'),
         '--json', ...(headed ? ['--headed'] : []),
         ...(executablePath ? ['--executable-path', executablePath] : []), ...command,
       ]
-      const { stdout, stderr } = await exec(process.execPath, [launcher, ...args], {
+      const { stdout, stderr } = await execute(process.execPath, [launcher, ...args], {
         env, cwd: root, signal, timeout: 60000, maxBuffer: 2 * 1024 * 1024,
       }).catch(error => {
         // execFile errors include the complete command (possibly a password).

@@ -23,7 +23,13 @@ for (const kind of ['core', 'workbench']) {
     assert.match(commit, /^[a-f0-9]{40}$/)
     const show = path => execFileSync('git', ['show', `${commit}:plugins/${directory}/${path}`], { cwd: fileURLToPath(root) })
     const pkg = JSON.parse(show('package.json'))
-    for (const file of ['package.json', ...pkg.files]) files.set(`components/${directory}/${file}`, show(file))
+    const current = JSON.parse(await read(`plugins/${directory}/package.json`))
+    assert.equal(pkg.version, current.version, `${directory}: pinned component differs from source version; update bundles/components.json`)
+    for (const file of ['package.json', ...pkg.files]) {
+      const pinned=show(file)
+      assert.deepEqual(pinned, await readFile(new URL(`plugins/${directory}/${file}`,root)), `${directory}/${file}: source differs from pinned release; update components.json`)
+      files.set(`components/${directory}/${file}`, pinned)
+    }
     const entry = `${manifest.name}/${directory}`
     let patch = rows(show('cordis.patch.yml').toString()).replaceAll(`name: ${pkg.name}\n`, `name: ${entry}\n`)
     if (directory === 'chief') {
@@ -59,7 +65,7 @@ for (const kind of ['core', 'workbench']) {
   files.set('persona/package.json', Buffer.from(JSON.stringify({name: 'workbench-chief-persona', type: 'module'})))
   files.set('persona/preset.js', Buffer.from("export * from '../components/chief/preset.js'\n"))
   files.set('preset.js', Buffer.from("// Separate metadata owner: this backend-only preset must not load Chief's UI twice.\nexport * from './components/chief/preset.js'\n"))
-  const provenance = { commits: lock, sha256: Object.fromEntries([...files].filter(([file]) => file.startsWith('components/')).map(([file, content]) => [file, createHash('sha256').update(content).digest('hex')])) }
+  const provenance = { versions: Object.fromEntries(Object.keys(lock).map(name => [name, JSON.parse(files.get(`components/${name}/package.json`)).version])), commits: lock, sha256: Object.fromEntries([...files].filter(([file]) => file.startsWith('components/')).map(([file, content]) => [file, createHash('sha256').update(content).digest('hex')])) }
   files.set('provenance.json', Buffer.from(JSON.stringify(provenance, null, 2) + '\n'))
   for (const [path, content] of files) {
     const url = new URL(`bundles/${kind}/${path}`, root)

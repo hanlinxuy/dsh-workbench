@@ -25,3 +25,12 @@ test('connection settings preserve secrets on blank edit, redact reads, restore 
   await assert.rejects(bad('test'),e=>!e.message.includes(form.password)&&e.message.includes('连接测试失败'))
  }finally{await rm(p,{recursive:true,force:true})}
 })
+
+test('gateway headers are redacted and blank edits preserve indexed secrets',async()=>{
+ const home=await mkdtemp(join(tmpdir(),'intranet-headers-'));const run=createIntranetSettings(home,{name:'gateway',backends:['a']})
+ try{const form={employeeId:'',password:'',maasToken:'',git:[],gatewayHeaders:[{id:'one',backend:'a',name:'x-a',value:'private',secret:true},{id:'two',backend:'a',name:'x_a',value:'public',secret:false}],gatewayOverrides:{a:true}}
+ const saved=await run('save',form);assert.equal(saved.gatewayHeaders[0].value,'');assert.equal(saved.gatewayHeaders[0].valueSaved,true);assert.equal(saved.gatewayHeaders[1].value,'public');assert.deepEqual(saved.gatewayOverrides,{a:true})
+ const again=await run('save',{...form,gatewayHeaders:saved.gatewayHeaders});assert.equal(again.gatewayHeaders[0].valueSaved,true)
+ await assert.rejects(run('save',{...form,gatewayHeaders:[{...form.gatewayHeaders[0],value:'x\r\ny'}]}),/格式/)
+ }finally{await rm(home,{recursive:true,force:true})}
+})

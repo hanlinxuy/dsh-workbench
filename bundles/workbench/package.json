@@ -1,7 +1,7 @@
 {
   "name": "dsh-workbench-suite",
-  "version": "0.2.6",
-  "description": "项目管理、浏览器、桌面操作与 Git 协作，一次安装，按需开启。",
+  "version": "0.2.7",
+  "description": "\u9879\u76ee\u7ba1\u7406\u3001\u6d4f\u89c8\u5668\u3001\u684c\u9762\u64cd\u4f5c\u4e0e Git \u534f\u4f5c\uff0c\u4e00\u6b21\u5b89\u88c5\uff0c\u6309\u9700\u5f00\u542f\u3002",
   "private": false,
   "type": "module",
   "main": "./components/chief/suite.js",
@@ -57,7 +57,8 @@
     "./git/locale/*": "./locale/git/*",
     "./client": "./components/chief/client.js",
     "./settings": "./settings/runtime.js",
-    "./settings/locale/*": "./settings/locale/*"
+    "./settings/locale/*": "./settings/locale/*",
+    "./provider-gateway": "./components/provider-gateway/index.js"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh": ">=0.2.2-rc.1 <0.2.3-0"
