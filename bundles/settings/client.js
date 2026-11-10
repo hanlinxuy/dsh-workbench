@@ -1,3 +1,4 @@
+import { IntranetPanel } from './intranet-client.js'
 import { createElement as h, useEffect, useState } from 'react'
 export function apply(ctx) {
   const call=async action=>{
@@ -6,7 +7,7 @@ export function apply(ctx) {
   }
   function Settings({subject}) {
     if(subject.kind!=='bundle'||!['dsh-workbench-core','dsh-workbench-suite'].includes(subject.pkg.name))return null
-    return h(Panel)
+    return h('div',null,h(IntranetPanel),h(Panel))
   }
   function Panel(){
     const [data,setData]=useState(),[error,setError]=useState(''),[message,setMessage]=useState(''),[working,setWorking]=useState(false),[confirm,setConfirm]=useState(false)

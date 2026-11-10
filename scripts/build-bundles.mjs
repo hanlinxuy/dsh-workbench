@@ -9,7 +9,7 @@ import { parse, stringify } from 'yaml'
 const root = new URL('../', import.meta.url)
 const read = path => readFile(new URL(path, root), 'utf8')
 const { build } = createRequire(new URL('../plugins/chief/package.json', import.meta.url))('esbuild')
-const settingsClient = (await build({stdin:{contents:await read('bundles/settings/client.js'),resolveDir:fileURLToPath(root)},bundle:true,external:['react'],format:'cjs',platform:'browser',write:false})).outputFiles[0].text
+const settingsClient = (await build({stdin:{contents:await read('bundles/settings/client.js'),resolveDir:fileURLToPath(new URL('bundles/settings/',root))},bundle:true,external:['react'],format:'cjs',platform:'browser',write:false})).outputFiles[0].text
 const lock = JSON.parse(await read('bundles/components.json'))
 const rows = text => {
   const marker = '- insert:\n'
@@ -53,7 +53,7 @@ for (const kind of ['core', 'workbench']) {
     patch += stringify(entries).trimEnd().split('\n').map(line => `    ${line}`).join('\n') + '\n'
   }
   for (const name of ['workbench.mjs','migrate.mjs']) files.set(`cli/${name}`, Buffer.from(await read(`bundles/cli/${name}`)))
-  for (const name of ['runtime.js','powershell.js']) files.set(`settings/${name}`, Buffer.from(await read(`bundles/settings/${name}`)))
+  for (const name of ['runtime.js','powershell.js','intranet.js']) files.set(`settings/${name}`, Buffer.from(await read(`bundles/settings/${name}`)))
   for (const [lang,title,description] of [['zh-CN','环境设置','检测重复登记，迁移配置并管理 PowerShell 7。'],['en','Environment settings','Check component registration, migrate settings and set up PowerShell 7.']]) files.set(`settings/locale/${lang}.json`, Buffer.from(JSON.stringify({meta:{title,description}},null,2)))
   files.set('cordis.patch.yml', Buffer.from(patch))
   files.set('persona/package.json', Buffer.from(JSON.stringify({name: 'workbench-chief-persona', type: 'module'})))
