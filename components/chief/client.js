@@ -311,4 +311,105 @@ function apply(ctx, config = {}) {
   ctx.effect(() => () => fiber.dispose(), "Chief command cleanup");
 }
 
-return Object.defineProperty({...module.exports},Symbol.toStringTag,{value:'Module'})}})
+const settings=(()=>{const module={exports:{}};var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// <stdin>
+var stdin_exports = {};
+__export(stdin_exports, {
+  apply: () => apply
+});
+module.exports = __toCommonJS(stdin_exports);
+var import_react = require("react");
+function apply(ctx) {
+  const call = async (action) => {
+    const response = await fetch("api/workbench-settings", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) });
+    const result = await response.json();
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  };
+  function Settings({ subject }) {
+    if (subject.kind !== "bundle" || !["dsh-workbench-core", "dsh-workbench-suite"].includes(subject.pkg.name)) return null;
+    return (0, import_react.createElement)(Panel);
+  }
+  function Panel() {
+    const [data, setData] = (0, import_react.useState)(), [error, setError] = (0, import_react.useState)(""), [message, setMessage] = (0, import_react.useState)(""), [working, setWorking] = (0, import_react.useState)(false), [confirm, setConfirm] = (0, import_react.useState)(false);
+    const refresh = () => call("status").then(setData).catch((e) => setError(e.message));
+    (0, import_react.useEffect)(() => {
+      void refresh();
+      const timer = setInterval(refresh, 5e3);
+      return () => clearInterval(timer);
+    }, []);
+    const run = async (action) => {
+      setWorking(true);
+      setError("");
+      setMessage("");
+      try {
+        const result = await call(action);
+        if (action === "migrate") {
+          setConfirm(false);
+          setMessage(result.application === "applied" ? "\u8FC1\u79FB\u5DF2\u751F\u6548\uFF0C\u539F\u914D\u7F6E\u548C\u6570\u636E\u5DF2\u4FDD\u7559\u3002" : result.application === "unchanged" ? "\u6CA1\u6709\u9700\u8981\u8FC1\u79FB\u7684\u7EC4\u4EF6\u3002" : "\u8FC1\u79FB\u5DF2\u4FDD\u5B58\u3002\u8BF7\u91CD\u542F DSH\uFF0C\u8BA9\u65B0\u914D\u7F6E\u751F\u6548\u3002");
+        } else setMessage(result.message);
+        await refresh();
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setWorking(false);
+      }
+    };
+    const disabled = working || data?.busy;
+    const button = (text, onClick) => (0, import_react.createElement)("button", { type: "button", disabled, onClick, style: { padding: "8px 14px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-primary, #555)", background: "transparent", color: "inherit", cursor: "pointer" } }, text);
+    const card = { padding: "16px 0", borderBottom: "1px solid var(--dsw-alias-border-primary, #444)" };
+    return (0, import_react.createElement)(
+      "section",
+      { "aria-label": "Workbench \u73AF\u5883\u8BBE\u7F6E", style: { maxWidth: 720, margin: "20px 0", lineHeight: 1.6 } },
+      (0, import_react.createElement)("h2", null, "\u73AF\u5883\u4E0E\u8FC1\u79FB"),
+      error && (0, import_react.createElement)("p", { role: "alert" }, error),
+      message && (0, import_react.createElement)("p", { role: "status" }, message),
+      !data ? (0, import_react.createElement)("p", null, "\u6B63\u5728\u68C0\u6D4B\u5F53\u524D DSH \u73AF\u5883\u2026") : (0, import_react.createElement)(
+        "div",
+        null,
+        (0, import_react.createElement)(
+          "div",
+          { style: card },
+          (0, import_react.createElement)("h3", null, "\u7EC4\u4EF6\u767B\u8BB0"),
+          data.lastMigration?.application === "restart-required" && (0, import_react.createElement)("p", { role: "status" }, "\u914D\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u8BF7\u91CD\u542F DSH \u540E\u751F\u6548\u3002"),
+          data.migration.changes ? (0, import_react.createElement)(
+            "div",
+            null,
+            (0, import_react.createElement)("p", null, `\u53D1\u73B0 ${data.migration.changes} \u4E2A\u53EF\u8FC1\u79FB\u7684\u72EC\u7ACB\u7EC4\u4EF6\u3002\u8FC1\u79FB\u4F1A\u5907\u4EFD\u914D\u7F6E\u3001\u4FDD\u7559\u539F\u8BBE\u7F6E\u548C\u6570\u636E\uFF0C\u5E76\u53BB\u6389\u91CD\u590D\u767B\u8BB0\u3002`),
+            (0, import_react.createElement)("p", null, data.migration.components.join(" \xB7 ")),
+            confirm ? (0, import_react.createElement)("div", null, (0, import_react.createElement)("p", null, "\u53EA\u5904\u7406\u5F53\u524D DSH\u3002\u8BF7\u5728\u4EFB\u52A1\u7ED3\u675F\u540E\u6267\u884C\uFF1B\u82E5\u5BBF\u4E3B\u8981\u6C42\u91CD\u542F\uFF0C\u9875\u9762\u4F1A\u660E\u786E\u63D0\u793A\u3002"), button("\u786E\u8BA4\u8FC1\u79FB", () => run("migrate"))) : button("\u67E5\u770B\u5E76\u8FC1\u79FB", () => setConfirm(true))
+          ) : (0, import_react.createElement)("p", null, "\u7EC4\u4EF6\u767B\u8BB0\u6B63\u5E38\uFF0C\u65E0\u9700\u8FC1\u79FB\u3002")
+        ),
+        (0, import_react.createElement)(
+          "div",
+          { style: card },
+          (0, import_react.createElement)("h3", null, "PowerShell 7"),
+          (0, import_react.createElement)("p", null, data.pwsh.message),
+          data.pwsh.state === "missing" && button("\u5B89\u88C5 PowerShell 7", () => run("install-pwsh")),
+          data.installation.status !== "idle" && (0, import_react.createElement)("p", { role: "status" }, data.installation.message),
+          data.installation.output && (0, import_react.createElement)("pre", { style: { whiteSpace: "pre-wrap" } }, data.installation.output)
+        ),
+        (0, import_react.createElement)("div", { style: { marginTop: 16 } }, button("\u91CD\u65B0\u68C0\u6D4B", refresh))
+      )
+    );
+  }
+  ctx.slots.inject("plugins.detail.section", () => ctx.slots.register({ name: "plugins.detail.section", id: "workbench.environment", order: 5 }, Settings));
+}
+;return module.exports})();const original=module.exports.apply;module.exports.apply=(ctx,config)=>{original(ctx,config);settings.apply(ctx)};return Object.defineProperty({...module.exports},Symbol.toStringTag,{value:'Module'})}})
