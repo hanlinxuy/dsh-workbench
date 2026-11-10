@@ -7,9 +7,9 @@ const packages = {
   'dsh-plugin-chatgpt': ['chatgpt'],
 }
 const yamlOptions = { customTags: [{tag:'tag:yaml.org,2002:js',resolve:value=>value}] }
-// Only operates on an explicitly stopped profile. The YAML AST retains !!js
+// Used offline or inside the host configuration lock and HMR exclusive operation. The YAML AST retains !!js
 // nodes without evaluating them; credentials and state directories are untouched.
-export async function migrate(profile, { apply = false, stopped = false } = {}) {
+export async function migrate(profile, { apply = false, stopped = false, managed = false } = {}) {
   const manifestPath=join(profile,'package.json'), patchPath=join(profile,'cordis.patch.yml')
   const manifestText=await readFile(manifestPath,'utf8'), patchText=await readFile(patchPath,'utf8')
   const manifest=JSON.parse(manifestText), bundles=manifest.dsh?.profile?.bundles ?? []
@@ -39,7 +39,7 @@ export async function migrate(profile, { apply = false, stopped = false } = {}) 
   }
   const plan={profile,suite,components:selected,changes:overrides.length,backup:null}
   if(!apply || !selected.length)return plan
-  if(!stopped)throw new Error('Stop DSH for this profile, then pass --stopped; no files changed')
+  if(!stopped && !managed)throw new Error('Stop DSH for this profile, then pass --stopped; no files changed')
   // Defaults from the previously installed package go before the user layer.
   // Existing user edits and disable flags retain final precedence.
   doc.contents.items.unshift(...overrides)

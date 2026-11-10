@@ -1,6 +1,6 @@
 {
   "name": "dsh-workbench-core",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "项目管理、浏览器、桌面操作与 Git 协作，一次安装，按需开启。",
   "private": false,
   "type": "module",
@@ -15,7 +15,8 @@
     "provenance.json",
     "locale",
     "persona",
-    "cli"
+    "cli",
+    "settings"
   ],
   "dsh": {
     "bundle": {
@@ -54,7 +55,8 @@
     "./desktop/locale/*": "./locale/desktop/*",
     "./git": "./components/git/index.js",
     "./git/locale/*": "./locale/git/*",
-    "./client": "./components/chief/client.js"
+    "./client": "./components/chief/client.js",
+    "./settings": "./settings/runtime.js"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh": ">=0.2.2-rc.1 <0.2.3-0"
