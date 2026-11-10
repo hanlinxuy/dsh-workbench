@@ -4,10 +4,13 @@
 
 | 能力 | 完整套装 | Core 内网套装 |
 | --- | --- | --- |
-| Chief 0.3.4 | 开启 | 开启 |
+| Chief 0.3.5 | 开启 | 开启 |
 | Browser / agent-browser 0.41.2 | 开启 | 开启 |
 | Desktop / agent-desktop 1.2.0 | 开启 | 开启 |
-| Git 0.1.2 | 开启，自动识别当前仓库 | 开启，自动识别当前仓库 |
+| Git 0.2.0 | 开启，自动识别当前仓库 | 开启，自动识别当前仓库 |
+| dsh-x-memory 0.1.1 | 开启 | 开启 |
+| dsh-context 0.83.1 | 开启 | 开启 |
+| dsh-ops 0.5.2 | 按上游默认开启 | 按上游默认开启 |
 | ChatGPT provider 0.1.18 | 安装，关闭 | 不安装 |
 
 本机推荐完整套装，需要订阅模型时再打开 ChatGPT；内网推荐 Core，使用已有 vLLM 配置。
@@ -91,3 +94,15 @@ Windows 实机、跨状态格式迁移、已有 standalone 自动迁移未在此
 套装及自建组件增加中英文名称和简短说明，组件使用包入口避免展示本机文件路径。Chief 前端与管理能力由套装主入口统一加载；浏览器、桌面和 Git 保持独立开关。ChatGPT 沿用上游元数据。发行默认仍关闭 ChatGPT，本机手动开启的状态保存在 profile，升级保留。
 
 提交生成产物后运行 `pnpm release:bundles`，把两个套装拆成根目录可安装的 `release/core`、`release/workbench` 分支。验证分支固定提交后再推送它们；发布分支不手工编辑。这样用户仍只需在添加插件框粘贴 Git 地址，不经过 `&path:`。
+
+## 常用插件一起安装
+
+0.2.0 起 Core 与完整套装都固定依赖 dsh-x-memory、dsh-context、dsh-ops，直接复用上游发布包与组件 ID，不 fork、不复制源码。各组件仍可在 Plugins 单独开关；OPS 0.5.2 使用统一配置入口，采集面板、TUI、下载拦截沿用上游默认关闭。
+
+X Memory 管理工作区知识，Chief 的目标、约束、验收、阻碍、下一步仍存放在 Chief 私有 Markdown/Git 中。每次派单把该项目六字段快照交给 Worker，不向 Worker 开放 Chief 的记忆写权限。
+
+若现有 profile 已单独登记这三个 bundle，先在独立 profile 验证迁移：避免同一个组件同时由独立 bundle 和套装重复插入。已有记忆与配置不需要删除。不要把“安装新版套装”当作自动迁移许可。
+
+GitLab MR 读操作可用，写操作默认禁止。内部平台可显式允许创建/评论；合并还需仓库目标分支白名单，并读取实际 MR 的目标分支及源 SHA。外网 MR 写入仍拒绝。Browser 本轮没有实现 eval；只支持既有页面导航、快照与交互。
+
+0.2.0 套装兼容目标为 DSH Desktop / Web 0.2.2-rc.1（OPS 最新版要求该宿主系列），套装声明对应 peer dependency。旧 DSH 0.2.1 用户继续使用 0.1.5 的固定发布提交，先在独立 profile 验证宿主升级。独立插件不因套装要求而统一改写版本边界。

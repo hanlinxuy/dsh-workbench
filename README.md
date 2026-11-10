@@ -6,7 +6,7 @@ Community plugins and practical guides for DeepSeek Harness. Not an official Dee
 
 ## 一次安装
 
-推荐 [Workbench 套装](docs/workbench-suite.md)：Chief、Browser、Desktop、受限 Git 默认开启，ChatGPT 安装但默认关闭。在 DSH「添加插件」粘贴：
+推荐 [Workbench 套装](docs/workbench-suite.md)：Chief、Browser、Desktop、受限 Git，以及 X Memory、Context、OPS 默认组件一起安装，ChatGPT 安装但默认关闭。在 DSH「添加插件」粘贴：
 
 ```text
 git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench
@@ -22,7 +22,7 @@ git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench
 | [Desktop](plugins/desktop/README.md) | 固定 agent-desktop release、原生应用观察与操作 | 可选原型，0.1.0 |
 | [Git](plugins/git/README.md) | 多平台/remote 配置、独立写权限、外网 issue/comment 限定 | 可选原型，0.1.1 |
 | [Browser](plugins/browser/README.md) | 固定 AB release、网页操作、独立登录资料与账号切换 | 原型，0.1.0 |
-| [Chief](plugins/chief/README.md) | 自然语言项目调度、持久化记忆、任务验收、人工接手、项目看板 | 原型，0.3.4 |
+| [Chief](plugins/chief/README.md) | 自然语言项目调度、持久化记忆、任务验收、人工接手、项目看板 | 原型，0.3.5 |
 
 Chief 独立运行在 DSH 内，不依赖 Pi Durable 或 DS-Bot。模型与登录由 DSH 提供。
 `plugins/chief` 是 Chief 的唯一维护目录，后续开发、修复与发布均在本仓库进行。
@@ -42,7 +42,7 @@ pnpm check
 pnpm pack:chief
 ```
 
-再按 [安装与升级](docs/installation.md) 将 `dist/independent-chief-0.3.4.tgz` 安装到目标 DSH profile。
+再按 [安装与升级](docs/installation.md) 将 `dist/independent-chief-0.3.5.tgz` 安装到目标 DSH profile。
 `main` 根目录是源码集合；`release/core` 与 `release/workbench` 的根目录才是可安装套装，不再依赖 `&path:`。
 
 ## 文档

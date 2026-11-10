@@ -7,6 +7,8 @@
 
 需要本机 Git、DSH、Node 24+、pnpm 11+。插件不替换 Git 或凭据管理器。
 
+**Windows 安装提示（issue #4）：** DSH Desktop 0.2.1-rc.5 已报告丢失 Git 安装来源的子目录参数。该环境优先在仓库运行 `pnpm pack:git`，再通过 `dsh plugin --profile <实际-profile> add <输出的-tgz-绝对路径>` 安装；不要假定下面的 Git 子目录安装在该版本可用。完整流程和实际插件加载验收见[安装指南](../../docs/installation.md)。
+
 ```sh
 dsh plugin --profile web add \
   'github:hanlinxuy/dsh-workbench#main&path:/plugins/git'
@@ -22,7 +24,8 @@ export DSH_GIT_CONFIG='/absolute/path/to/private/git-config.json'
 - `hosts`：允许的主机名（包括 API 主机）；不根据域名后缀自动猜测内外网。
 - `apiBase`：完整 API 根地址。GitHub Enterprise 通常带 `/api/v3`，GitLab 带 `/api/v4`。
 - `tokenEnv`：凭据环境变量名，不是凭据值；通用 Git 沿用系统 SSH/credential helper。
-- `apiWrites`：只支持 `issue_create` 和 `comment_create`，省略或空数组为只读。
+- `apiWrites`：支持 `issue_create`、`comment_create`、`mr_create`、`mr_comment`、`mr_merge`；省略或空数组为只读，各动作须独立授权。MR 写入仅限 internal GitLab。
+- `repositories.<id>.mergeTargetBranches`：MR 合并目标分支的精确白名单，默认 `[]`（禁合并）；例如 `["main", "release/1.x"]`，不支持通配符。
 - `repositories.<id>`：固定绝对路径；本地写权限 `localWrite` 默认 false。
 - `remotes.<name>`：已有 remote 的精确有效 URL、平台 ID、fetch/push 开关，均默认关闭。
 - `platform`/`apiRepo`：该仓库使用哪个 API 平台及 `owner/repo`（GitLab 可有多层 group）。
@@ -41,9 +44,12 @@ export DSH_GIT_CONFIG='/absolute/path/to/private/git-config.json'
 | push | remote.push=true **且平台为 internal** |
 | 平台读取 | 有 API 适配器及仓库映射 |
 | 创建 issue/发表评论 | apiWrites 明确包含对应动作 |
-| 删库、改权限、上传代码、创建/合并 PR/MR 等 API 写入 | 无此工具入口 |
+| GitLab MR 读取/普通评论读取 | GitLab API 适配器及仓库映射；不要求写权限 |
+| 创建 MR / MR 普通评论 | internal GitLab 且 apiWrites 包含 mr_create / mr_comment |
+| 合并 MR | internal GitLab、apiWrites 包含 mr_merge、显式 target_branch 在仓库 mergeTargetBranches 内，且读取到的实际 MR 分支匹配 |
+| 删库、改权限、上传代码、GitHub PR 创建/合并等 API 写入 | 无此工具入口 |
 
-外网 push 即使误配 true 仍被拒绝。API 只有创建 issue/评论两种写入口，没有通用 HTTP 请求工具。
+外网 push 即使误配 true 仍被拒绝。外网 API 仍仅允许显式授权的 issue/comment 写入；所有 MR 写入仅限 internal。没有通用 HTTP 请求工具。
 Git 会先检查 get-url 展开后的地址（含 pushInsteadOf/pushurl），与配置不符就拒绝。
 HTTP API 和 Git HTTP 不跟随重定向，避免检查一个地址却请求另一个。
 插件不自动重试写入；发生超时先核对结果，避免重复发 issue/comment。
@@ -66,10 +72,21 @@ HTTP API 和 Git HTTP 不跟随重定向，避免检查一个地址却请求另�
 推送后使用 remote_head 核对实际远端，不能只凭空输出或本地跟踪分支声称成功。
 不提供 clone、强推、reset、删除文件/分支、自动合并。diff 当前显示未暂存差异。
 API 提供 repo_get、issues_list、issue_get、comments_list、issue_create、comment_create；列表每页 30 条，page 参数翻页。
-GitHub issue 评论入口也可用于 PR 的普通讨论评论；GitLab 此版是 issue notes，不含 MR review。
+GitHub issue 评论入口也可用于 PR 的普通讨论评论。GitLab MR 新入口（`number` 是项目内 MR IID，不是全局 ID）：
+
+- `mr_list(repository,page)` → GET `/projects/:id/merge_requests`。
+- `mr_get(repository,number)` → GET `/projects/:id/merge_requests/:iid`。
+- `mr_comments_list(repository,number,page)` → GET `/projects/:id/merge_requests/:iid/notes`。
+- `mr_create(repository,title,body,source_branch,target_branch)` → POST `/projects/:id/merge_requests`；body 映射 description，标题/正文非空，源/目标必须是不同的有效分支。
+- `mr_comment(repository,number,body)` → POST `/projects/:id/merge_requests/:iid/notes`；仅普通 notes，不是逐行 review/discussions。
+- `mr_merge(repository,number,target_branch)` → 先 GET 实际 MR，检查其 target_branch 精确匹配白名单及调用者目标、opened 状态、IID、head SHA，再 PUT `/projects/:id/merge_requests/:iid/merge` 并携带实际 SHA，拒绝源 head 已改变的合并。
+
+MR 写入默认拒绝。操作员仅在私有配置中为 internal GitLab 增加所需 `apiWrites`；合并还需给指定仓库增加 `mergeTargetBranches`，例如 `["main"]`。工具参数不能修改这些策略；示例配置不默认启用 MR 写权限。自动发现的仓库仍为只读。
+
+**并发边界：** GET 校验与 PUT 不是原子事务；GitLab 的 `sha` 只锁定源 head，不能原子锁定目标分支。目标分支保护及限制 MR 目标修改权限仍须由服务端策略保证；此工具不替代这些策略。遇到超时/网络错误不自动重试；先 `mr_get` 或 `mr_comments_list` 核实实际状态。写入后读取对象验证，合并后用 `mr_get` 确认 merged 状态，不能仅凭请求成功宣称完成。
 
 Chief 维持管理工具限制，将 Git 任务派给项目会话；本插件不会修改 Chief preset 或其他 profile。
-测试：`node --test plugins/git/runtime.test.js`。测试只写临时 Git 仓库及本地模拟 API，不向外网发布消息。
+测试：`node --test plugins/git/*.test.js`。测试只写临时 Git 仓库及本地模拟 API；MR 测试完全 mock fetch，不发真实远程写请求。
 
 ## 代理（API 与 Git 分别生效）
 

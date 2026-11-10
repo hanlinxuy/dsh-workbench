@@ -2,6 +2,10 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { isAbsolute } from 'node:path'
 const exec = promisify(execFile)
+const apiWrites = ['issue_create', 'comment_create', 'mr_create', 'mr_comment', 'mr_merge']
+const mrActions = ['mr_list', 'mr_get', 'mr_comments_list', 'mr_create', 'mr_comment', 'mr_merge']
+// Exact branch names only: no patterns, revision expressions, options or ref traversal.
+const validBranch = value => typeof value === 'string' && value.length > 0 && !value.startsWith('-') && !value.startsWith('/') && !value.endsWith('/') && !value.endsWith('.') && !/[\s\x00-\x1f\x7f~^:?*\[\\]/.test(value) && !value.includes('..') && !value.includes('@{') && value !== '@' && value.split('/').every(part => part && !part.startsWith('.') && !part.endsWith('.lock'))
 
 // Configuration is operator-owned, loaded once. Tools cannot mutate policy.
 export function createGit(config = {}) {
@@ -16,12 +20,13 @@ export function createGit(config = {}) {
       if (!platform.hosts.includes(url.hostname)) throw new Error(`API host not configured: ${id}`)
       if (platform.network === 'external' && url.protocol !== 'https:') throw new Error(`External API requires HTTPS: ${id}`)
     }
-    if (platform.apiWrites !== undefined && (!Array.isArray(platform.apiWrites) || platform.apiWrites.some(action => !['issue_create', 'comment_create'].includes(action)))) throw new Error(`Unsupported API write permission: ${id}`)
+    if (platform.apiWrites !== undefined && (!Array.isArray(platform.apiWrites) || platform.apiWrites.some(action => !apiWrites.includes(action)))) throw new Error(`Unsupported API write permission: ${id}`)
     if (platform.tokenEnv !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(platform.tokenEnv)) throw new Error(`Invalid credential reference: ${id}`)
   }
   for (const [id, repo] of Object.entries(repositories)) {
     if (!isAbsolute(repo.path ?? '')) throw new Error(`Absolute repository path required: ${id}`)
     if (repo.platform && !platforms[repo.platform]) throw new Error(`Unknown platform: ${id}`)
+    if (repo.mergeTargetBranches !== undefined && (!Array.isArray(repo.mergeTargetBranches) || repo.mergeTargetBranches.some(branch => !validBranch(branch)))) throw new Error(`Invalid merge target branch allowlist: ${id}`)
     if (repo.apiRepo && !/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+$/.test(repo.apiRepo)) throw new Error(`Invalid API repository: ${id}`)
     for (const [remote, rule] of Object.entries(repo.remotes ?? {})) {
       if (!/^[A-Za-z0-9_.-]+$/.test(remote) || remote.startsWith('-') || !platforms[rule.platform] || typeof rule.url !== 'string') throw new Error(`Invalid remote: ${id}/${remote}`)
@@ -51,10 +56,10 @@ export function createGit(config = {}) {
       const readOnly = { ...platform, apiWrites: [] }
       return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: false, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: false } } : {} } } })({ ...args, repository: "current" }, signal)
     }
-    const { action, repository, remote = 'origin', branch, message, paths, number, title, body, page = 1 } = args
+    const { action, repository, remote = 'origin', branch, message, paths, number, title, body, page = 1, source_branch, target_branch } = args
     if (action === 'catalog') return JSON.stringify({
       platforms: Object.fromEntries(Object.entries(platforms).map(([id, p]) => [id, { kind: p.kind, network: p.network, apiWrites: p.apiWrites ?? [] }])),
-      repositories: Object.fromEntries(Object.entries(repositories).map(([id, r]) => [id, { localWrite: r.localWrite === true, platform: r.platform, remotes: Object.fromEntries(Object.entries(r.remotes ?? {}).map(([name, rule]) => [name, { platform: rule.platform, fetch: rule.fetch === true, push: rule.push === true && platforms[rule.platform].network === 'internal' }])) }])),
+      repositories: Object.fromEntries(Object.entries(repositories).map(([id, r]) => [id, { localWrite: r.localWrite === true, platform: r.platform, mergeTargetBranches: r.mergeTargetBranches ?? [], remotes: Object.fromEntries(Object.entries(r.remotes ?? {}).map(([name, rule]) => [name, { platform: rule.platform, fetch: rule.fetch === true, push: rule.push === true && platforms[rule.platform].network === 'internal' }])) }])),
     })
     const repo = Object.hasOwn(repositories, repository) ? repositories[repository] : undefined
     if (!repo) throw new Error('Repository is not configured')
@@ -110,25 +115,46 @@ export function createGit(config = {}) {
       }
       const platform = platforms[repo.platform]
       if (!platform || platform.kind === 'git' || !repo.apiRepo) throw new Error('No API adapter configured for this repository')
-      if (!['repo_get', 'issues_list', 'issue_get', 'comments_list', 'issue_create', 'comment_create'].includes(action)) throw new Error('Unsupported platform operation')
-      const write = ['issue_create', 'comment_create'].includes(action)
+      if (!['repo_get', 'issues_list', 'issue_get', 'comments_list', ...apiWrites, ...mrActions].includes(action)) throw new Error('Unsupported platform operation')
+      const mr = mrActions.includes(action)
+      if (mr && platform.kind !== 'gitlab') throw new Error('MR operations require a GitLab adapter')
+      const write = apiWrites.includes(action)
       if (write && !platform.apiWrites?.includes(action)) throw new Error('API write is disabled')
+      if (mr && write && platform.network !== 'internal') throw new Error('MR writes require an internal platform')
       if (['issue_get', 'comments_list', 'comment_create'].includes(action) && (!Number.isSafeInteger(number) || number < 1)) throw new Error('Positive issue number required')
+      if (['mr_get', 'mr_comments_list', 'mr_comment', 'mr_merge'].includes(action) && (!Number.isSafeInteger(number) || number < 1)) throw new Error('Positive MR number required')
       if (!Number.isSafeInteger(page) || page < 1) throw new Error('Positive page required')
-      if (write && (typeof body !== 'string' || !body.trim())) throw new Error('Body required')
-      if (action === 'issue_create' && (typeof title !== 'string' || !title.trim())) throw new Error('Title required')
+      if (write && action !== 'mr_merge' && (typeof body !== 'string' || !body.trim())) throw new Error('Body required')
+      if (['issue_create', 'mr_create'].includes(action) && (typeof title !== 'string' || !title.trim())) throw new Error('Title required')
+      if (action === 'mr_create' && (!validBranch(source_branch) || !validBranch(target_branch) || source_branch === target_branch)) throw new Error('Distinct valid source_branch and target_branch required')
+      if (action === 'mr_merge') {
+        if (!validBranch(target_branch) || !repo.mergeTargetBranches?.includes(target_branch)) throw new Error('MR target_branch is not allowlisted')
+      }
       const github = platform.kind === 'github'
       const prefix = github ? `repos/${repo.apiRepo.split('/').map(encodeURIComponent).join('/')}` : `projects/${encodeURIComponent(repo.apiRepo)}`
-      const suffix = { repo_get: '', issues_list: '/issues', issue_get: `/issues/${number}`, comments_list: `/issues/${number}/${github ? 'comments' : 'notes'}`, issue_create: '/issues', comment_create: `/issues/${number}/${github ? 'comments' : 'notes'}` }[action]
+      const mrPath = `/merge_requests/${number}`
+      const suffix = { repo_get: '', issues_list: '/issues', issue_get: `/issues/${number}`, comments_list: `/issues/${number}/${github ? 'comments' : 'notes'}`, issue_create: '/issues', comment_create: `/issues/${number}/${github ? 'comments' : 'notes'}`, mr_list: '/merge_requests', mr_get: mrPath, mr_comments_list: `${mrPath}/notes`, mr_create: '/merge_requests', mr_comment: `${mrPath}/notes`, mr_merge: `${mrPath}/merge` }[action]
       const url = new URL(platform.apiBase.replace(/\/$/, '') + '/' + prefix + suffix)
-      if (['issues_list', 'comments_list'].includes(action)) { url.searchParams.set('per_page', '30'); url.searchParams.set('page', String(page)) }
+      if (['issues_list', 'comments_list', 'mr_list', 'mr_comments_list'].includes(action)) { url.searchParams.set('per_page', '30'); url.searchParams.set('page', String(page)) }
       let token = platform.tokenEnv ? process.env[platform.tokenEnv] : undefined
       if (!token && platform.githubLogin) token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || (await exec("gh", ["auth", "token", "--hostname", "github.com"], { signal, timeout: 10000 }).catch(() => ({ stdout: "" }))).stdout.trim()
       if (platform.tokenEnv && !token) throw new Error(`Credential environment variable missing: ${platform.tokenEnv}`)
       const headers = { Accept: 'application/json', 'Content-Type': 'application/json', ...(token ? github ? { Authorization: `Bearer ${token}` } : { 'PRIVATE-TOKEN': token } : {}) }
-      const payload = action === 'issue_create' ? { title, [github ? 'body' : 'description']: body } : { body }
-      const response = await fetch(url, { method: write ? 'POST' : 'GET', headers, ...(write ? { body: JSON.stringify(payload) } : {}), redirect: 'error', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000) })
-      if (!response.ok) throw new Error(`Platform HTTP ${response.status}; no automatic retry`)
+      const request = async (target, method = 'GET', payload) => {
+        const response = await fetch(target, { method, headers, ...(payload !== undefined ? { body: JSON.stringify(payload) } : {}), redirect: 'error', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000) })
+        if (!response.ok) throw new Error(`Platform HTTP ${response.status}; no automatic retry`)
+        return response
+      }
+      let payload = action === 'mr_create' ? { title, description: body, source_branch, target_branch } : action === 'issue_create' ? { title, [github ? 'body' : 'description']: body } : { body }
+      if (action === 'mr_merge') {
+        // Never trust the caller's target: read this MR from this configured project.
+        const actual = await (await request(new URL(platform.apiBase.replace(/\/$/, '') + '/' + prefix + mrPath))).json()
+        if (actual?.target_branch !== target_branch || !repo.mergeTargetBranches.includes(actual.target_branch)) throw new Error('Actual MR target branch does not match the allowlisted target_branch')
+        if (actual.state !== 'opened' || actual.iid !== number || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(actual.sha ?? '')) throw new Error('MR must be opened with matching iid and a valid head SHA')
+        // GitLab rejects a changed source head rather than merging unreviewed commits.
+        payload = { sha: actual.sha }
+      }
+      const response = await request(url, action === 'mr_merge' ? 'PUT' : write ? 'POST' : 'GET', write ? payload : undefined)
       return JSON.stringify({ data: await response.json(), page, next: response.headers.get('x-next-page') || response.headers.get('link') || null })
     })
     const settled = pending.then(() => {}, () => {})

@@ -7,7 +7,16 @@ never include unrelated work or credentials. Commit and push only within the use
 requested scope. Fetch updates remote tracking refs but does not merge local work.
 Switch only to an existing branch; this tool does not reset or discard changes.
 
-Platform issues/comments are external communication: require the user's instruction
+GitLab mr_list/mr_get/mr_comments_list are read-only; number is the project-local MR IID.
+MR writes default to denied and require internal GitLab plus explicit apiWrites for mr_create/mr_comment/mr_merge.
+mr_create requires title, body, source_branch and target_branch; mr_comment requires number and body.
+mr_merge requires number and explicit target_branch in the repository mergeTargetBranches exact allowlist.
+The tool reads the actual MR target and checks it matches before merging, and sends its source SHA.
+This GET/PUT check is not atomic for target changes: server branch protection and target-edit restrictions remain necessary.
+Read mr_get after create/merge and mr_comments_list after commenting to verify the real outcome.
+Never automatically retry an uncertain MR create/comment/merge; inspect the current state first.
+
+Platform issues/comments/MRs are external communication: require the user's instruction
 to publish them. A permission in config permits the operation technically but is
 not a request to send a message. Read back the created object/issue to verify.
 On timeout or network failure, inspect whether a write landed before deciding what

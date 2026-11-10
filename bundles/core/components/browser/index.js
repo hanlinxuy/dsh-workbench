@@ -17,7 +17,7 @@ export function apply(ctx, config = {}) {
   ctx.tools.register(defineTool({
     name: 'workbench_browser',
     timeoutMs: 65000,
-    description: 'Use agent-browser with a persistent named login account. Actions: open(target URL), snapshot, click(target ref), fill(target ref,value), select(target ref,value), press(target key), text(optional target), url, wait(target selector), back, close, version. Choose account explicitly when switching users. Refresh snapshot after navigation. Closing preserves login.',
+    description: 'Use agent-browser with a persistent named login account. Actions: open(target URL), snapshot, click(target ref), fill(target ref,value), select(target ref,value), press(target key), text(optional target), url, wait(target selector), back, close, version. Choose account explicitly when switching users. Refresh snapshot after navigation. Closing preserves login. open accepts HTTP(S) only. JavaScript eval/evaluate is unavailable, including with confirm=true; use snapshot/text/url for supported reads.',
     parameters: {
       action: { type: 'string', required: true },
       account: { type: 'string' },
