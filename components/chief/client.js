@@ -389,6 +389,7 @@ function apply(ctx) {
           { style: card },
           (0, import_react.createElement)("h3", null, "\u7EC4\u4EF6\u767B\u8BB0"),
           data.lastMigration?.application === "restart-required" && (0, import_react.createElement)("p", { role: "status" }, "\u914D\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u8BF7\u91CD\u542F DSH \u540E\u751F\u6548\u3002"),
+          data.lastMigration?.warnings?.length > 0 && (0, import_react.createElement)("p", { role: "status" }, data.lastMigration.warnings.join("\uFF1B")),
           data.migration.changes ? (0, import_react.createElement)(
             "div",
             null,
