@@ -73,3 +73,9 @@ ctx.provide('workbenchIntranet', adapter)
 Workbench Git 每次执行时读取当前 profile 私有连接设置，以配置平台的 hostname 匹配。未登记到此页的平台继续沿用已有 Git 配置策略；同一 host 多条登记时取交集。开启后对已配置内网平台生效；外网 Push/MR 写入限制和 MR 合并目标分支白名单仍有效。平台类型、API 地址、Token 绑定由内网适配器或 Git 配置提供，本页不是平台自动探测器。
 
 该约束覆盖 `workbench_git` 工具，不是 Shell、浏览器或其他 Git 客户端的系统级防火墙。内网适配器拿到的每个 git 项增加 `permissions: {write, push}`，也必须执行对应策略，不得把 Token 存在视为写入授权。
+
+### 0.2.6 权限回归
+
+77 项自动测试和开发分支 CI 通过；覆盖旧记录默认关闭、读取与创建 Issue、写入与 Push 分别放行、撤销立即生效、重新加载持久化，以及外网 Push 拒绝。Git 执行器与 API 使用受控替身，没有向真实平台发送写请求。
+
+固定套装 `6b4591ff1faebaaa4a77b241b5847ed763539504` 已安装到独立 DSH profile；宿主设置接口实际返回旧平台 `write:false,push:false`，Chief 状态接口正常。浏览器自动化在读取页面时无响应，本轮未完成开关点击视觉验收，不应据此宣称 Desktop 界面已验证。
