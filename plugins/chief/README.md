@@ -53,3 +53,9 @@ Windows、macOS、Linux 的存储与生命周期回归由 CI 执行；这不等�
 - 嵌套侧栏与工作区隐藏使用小范围 DOM/CSS 适配；DSH 升级时需做界面回归。
 - 模型仍可能误解或不遵守约束；验收与轨迹提供核对依据，不是执行沙箱。
 - 工具覆盖、安装和回滚见 [安装指南](../../docs/installation.md)。
+
+## Worker 项目记忆
+
+每次派单自动附带该项目 goal、priority、constraints、criteria、blockers、nextSteps 六字段快照。Worker 无需直接读取 Chief 私有存储，不能修改它；项目之间不共享快照。显式任务验收标准优先，不反写记忆。更新记忆后下一次派单使用新快照，已发任务不被改写。
+
+套装附带的 dsh-x-memory 管理工作区知识，Chief 的项目目标、控制权、验收与阻碍仍以 chief_project 的 Markdown/Git 存储为准；两套记忆不自动互相同步。

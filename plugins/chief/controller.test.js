@@ -2,6 +2,43 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createController } from './controller.js'
 
+test('dispatch provides a project-local read-only six-field memory snapshot without internal metadata', async () => {
+  const fields = { goal: 'Ship A', priority: 'P0', constraints: 'Read only', criteria: 'Tests pass', blockers: 'Approval required', nextSteps: 'Ask user' }
+  const memory = { ...fields, source: 'secret-review-request-id', updatedAt: 'private-timestamp', sessionId: 'secret-session', id: 'secret-project' }
+  const state = { projects: [{ id: 'secret-project', name: 'A', sessionId: 'secret-session', owner: 'chief', seen: [] }] }
+  const calls = []
+  const controller = createController({ state, save: async () => {}, memory: {
+    directory: 'secret-memory-directory',
+    get(id) { assert.equal(id, 'secret-project'); return memory },
+    update() { assert.fail('dispatch must not write project memory') },
+  } }, { prompt: async (...args) => calls.push(args) })
+  await controller.dispatch('A', 'Inspect only', { criteria: 'Task-specific criterion' })
+  const prompt = calls[0][2]
+  assert.match(prompt, /Read-only project memory snapshot/)
+  assert.match(prompt, /not new authorization/)
+  assert.match(prompt, /Report corrections to Chief/)
+  assert.ok(prompt.includes(JSON.stringify(fields, null, 2)))
+  assert.match(prompt, /Acceptance criteria for this task: Task-specific criterion/)
+  for (const secret of ['secret-review-request-id', 'private-timestamp', 'secret-session', 'secret-project', 'secret-memory-directory']) assert.equal(prompt.includes(secret), false)
+  assert.equal(state.projects[0].job.prompt, prompt)
+  assert.equal(memory.criteria, 'Tests pass')
+})
+
+test('dispatch snapshots empty memory and refreshes it on the next authorized task', async () => {
+  const state = { projects: [{ id: 'a', name: 'A', sessionId: 'a', owner: 'chief', seen: [] }] }
+  let memory = {}
+  const calls = []
+  const controller = createController({ state, save: async () => {}, memory: { get: () => memory } }, { prompt: async (...args) => calls.push(args) })
+  const id = await controller.dispatch('A', 'First')
+  assert.ok(calls[0][2].includes('"priority": ""'))
+  await controller.finish('a', id, { status: 'completed', text: 'Done' })
+  memory = { priority: 'P1', blockers: 'New blocker', nextSteps: 'New next step', criteria: 'New criterion' }
+  await controller.dispatch('A', 'Second')
+  assert.ok(calls[1][2].includes('"blockers": "New blocker"'))
+  assert.match(calls[1][2], /Acceptance criteria for this task: New criterion/)
+  assert.equal(calls[0][2].includes('New blocker'), false)
+})
+
 test('two projects run independently and takeover preserves in-flight result', async () => {
   const state = { projects: [] }
   const calls = []
