@@ -48,8 +48,10 @@ for (const kind of ['core', 'workbench']) {
     const layers = parse(source)
     assert.ok(layers.every(layer => Object.keys(layer).length === 1 && Array.isArray(layer.insert)), `${name}: unsupported upstream patch shape`)
     const entries = layers.flatMap(layer => layer.insert)
+    if (name === 'dsh-ops') for (const entry of entries) entry.disabled = true
     patch += stringify(entries).trimEnd().split('\n').map(line => `    ${line}`).join('\n') + '\n'
   }
+  for (const name of ['workbench.mjs','migrate.mjs']) files.set(`cli/${name}`, Buffer.from(await read(`bundles/cli/${name}`)))
   files.set('cordis.patch.yml', Buffer.from(patch))
   files.set('persona/package.json', Buffer.from(JSON.stringify({name: 'workbench-chief-persona', type: 'module'})))
   files.set('persona/preset.js', Buffer.from("export * from '../components/chief/preset.js'\n"))

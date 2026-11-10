@@ -5,6 +5,8 @@ import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setImmediate, setTimeout } from 'node:timers/promises'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { openStore } from './store.js'
 
 // Exercise the actual plugin adapter without requiring a running DSH host.
@@ -32,6 +34,15 @@ function host({ failRegister = false, failRelease = false, createGate, onPrompt 
     },
   } }, session: {} }
   const ctx = {
+    subprocess: {
+      spawn(spec) {
+        let output
+        return {
+          done: promisify(execFile)(spec.argv[0], spec.argv.slice(1), {cwd:spec.cwd, signal:spec.signal}).then(r=>{output=r.stdout;return {exitCode:0}}),
+          collected: {stdout:{readFrom:()=>({text:output,lossy:false})}},
+        }
+      },
+    },
     effect(setup, name) { const dispose = setup(); effects.set(name, { setup, dispose }) },
     on(name, callback) { events.set(name, callback) },
     agents: { list: () => [agent] },

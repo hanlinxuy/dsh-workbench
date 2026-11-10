@@ -21,7 +21,7 @@ for (const kind of ['core', 'workbench']) test(`${kind}: release provenance and 
   for (const id of ['x-memory', 'dsh-context', 'dsh-ops']) {
     const entry = entries.find(entry => entry.id === id)
     assert.ok(entry, id)
-    assert.notEqual(entry.disabled, true)
+    assert.equal(entry.disabled === true, id === 'dsh-ops')
   }
   const ops = entries.find(entry => entry.id === 'dsh-ops').config
   assert.equal(ops.standard.enabled, true)

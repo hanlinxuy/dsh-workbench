@@ -29,6 +29,9 @@ importers:
       dsh-x-memory:
         specifier: 0.1.1
         version: 0.1.1
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
 
   bundles/workbench:
     dependencies:
@@ -50,6 +53,9 @@ importers:
       dsh-x-memory:
         specifier: 0.1.1
         version: 0.1.1
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
 
   plugins/browser:
     dependencies:
