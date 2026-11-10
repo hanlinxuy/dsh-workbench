@@ -1,6 +1,4 @@
 import { dirname, join } from 'node:path'
-import { createRequire } from 'node:module'
-import { pathToFileURL } from 'node:url'
 import { withFileLock } from '@deepseek-ai/dsh-atomic-write'
 import { inspectPowerShell, installPowerShell } from './powershell.js'
 import { migrate } from '../cli/migrate.mjs'
@@ -18,11 +16,7 @@ export function apply(ctx) {
     const result = await child.done
     return {...result, stdout:child.collected.stdout.readFrom(0).text, stderr:child.collected.stderr.readFrom(0).text}
   }
-  const pwsh = () => inspectPowerShell(exec, process.platform, async () => {
-    const require=createRequire(import.meta.url)
-    const module=await import(pathToFileURL(join(dirname(require.resolve('dsh-ops/package.json')),'lib/shells/pwsh-upgrade.js')).href)
-    return module.hostPwshUpgradePlan()
-  })
+  const pwsh = () => inspectPowerShell(exec, process.platform)
   const status = async () => ({migration:await migrate(profile),pwsh:await pwsh(),busy,installation,lastMigration})
   ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-settings',methods:['POST'],requestBody:'buffered',async fetch(request){
     try {
