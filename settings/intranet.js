@@ -7,7 +7,7 @@ export function createIntranetSettings(profile, adapter) {
   const directory=join(profile,'.workbench-private'), file=join(directory,'connections.json')
   let writing=false
   const read=()=>readFile(file,'utf8').then(JSON.parse,error=>{if(error.code==='ENOENT')return {employeeId:'',password:'',maasToken:'',git:[]};throw error})
-  const view=value=>({employeeId:value.employeeId,passwordSaved:!!value.password,maasTokenSaved:!!value.maasToken,git:value.git.map(({id,label,url,token,permissions})=>({id,label,url,tokenSaved:!!token,permissions:{write:permissions?.write===true,push:permissions?.push===true}})),adapter:adapter?{name:adapter.name,demo:adapter.demo===true}:null})
+  const view=value=>({employeeId:value.employeeId,passwordSaved:!!value.password,maasTokenSaved:!!value.maasToken,gatewayHeaders:(value.gatewayHeaders??[]).map(({value,...row})=>({...row,value:row.secret?'':value,valueSaved:!!value})),gatewayOverrides:value.gatewayOverrides??{},git:value.git.map(({id,label,url,token,permissions})=>({id,label,url,tokenSaved:!!token,permissions:{write:permissions?.write===true,push:permissions?.push===true}})),adapter:adapter?{name:adapter.name,demo:adapter.demo===true,backends:adapter.backends??[]}:null})
   return async (action,input) => {
     const saved=await read()
     if(action==='status')return view(saved)
@@ -23,7 +23,15 @@ export function createIntranetSettings(profile, adapter) {
         if(row.permissions!==undefined && (!row.permissions || typeof row.permissions.write!=='boolean' || typeof row.permissions.push!=='boolean'))throw Error('权限选项格式不正确。')
         return {permissions:{write:row.permissions?.write===true,push:row.permissions?.push===true},id:row.id,label:row.label.trim().slice(0,100),url:url.href,token:row.token||saved.git.find(old=>old.id===row.id)?.token||''}
       })
-      const next={employeeId:input.employeeId.trim().slice(0,100),password:input.password||saved.password,maasToken:input.maasToken||saved.maasToken,git}
+      const gatewayHeaders=(input.gatewayHeaders??saved.gatewayHeaders??[]).map(row=>{
+        if(!row||typeof row.id!=='string'||typeof row.backend!=='string'||typeof row.name!=='string'||!/^[!#$%&'*+.^_`|~0-9a-z-]+$/i.test(row.name)||typeof row.value!=='string'||/[\r\n]/.test(row.value)||typeof row.secret!=='boolean')throw Error('自定义请求头格式不正确。')
+        if(['host','content-length','connection','transfer-encoding'].includes(row.name.toLowerCase()))throw Error('此请求头由网关管理。')
+        const prior=saved.gatewayHeaders?.find(h=>h.id===row.id)
+        return {id:row.id,backend:row.backend,name:row.name,secret:row.secret,value:row.value || (prior?.secret ? prior.value : '') || ''}
+      })
+      const gatewayOverrides=input.gatewayOverrides??saved.gatewayOverrides??{}
+      if(Object.values(gatewayOverrides).some(v=>typeof v!=='boolean'))throw Error('覆盖鉴权选项格式不正确。')
+      const next={gatewayHeaders,gatewayOverrides,employeeId:input.employeeId.trim().slice(0,100),password:input.password||saved.password,maasToken:input.maasToken||saved.maasToken,git}
       writing=true
       try{
         await mkdir(directory,{recursive:true,mode:0o700})
@@ -35,6 +43,7 @@ export function createIntranetSettings(profile, adapter) {
     if(!adapter)throw Error('尚未接入内网适配器。配置可先保存，连接测试需由内网插件提供。')
     // Only explicit adapter operations can use secrets. No endpoint from the
     // browser is fetched by this template, and adapter errors never echo them.
+    if(action==='probe'){if(!adapter.probe)throw Error('适配器不支持探测');return adapter.probe(input).catch(()=>{throw Error('模型探测失败，请检查后端设置。')})}
     if(action==='test'){
       const result=await adapter.test(saved).catch(()=>{throw Error('连接测试失败，请检查配置或联系内网服务管理员。')})
       return {connected:result.connected===true,demo:adapter.demo===true}

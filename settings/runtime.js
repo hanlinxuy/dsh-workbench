@@ -8,11 +8,11 @@ export const name = 'workbench-settings'
 export const inject = ['connection','configEditor','subprocess','sessionController']
 export function apply(ctx, config = {}) {
   const profile = dirname(ctx.configEditor.documentPath)
-  const intranet=createIntranetSettings(profile,config.intranetDemo?demoIntranetAdapter:ctx.get('workbenchIntranet'))
+  const intranet=(action,input)=>createIntranetSettings(profile,config.intranetDemo?demoIntranetAdapter:ctx.get('workbenchIntranet'))(action,input)
   ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-intranet',methods:['POST'],requestBody:'buffered',async fetch(request){
     try {
       const body=await request.json()
-      if(!['status','save','test','models'].includes(body.action))throw Error('未知操作。')
+      if(!['status','save','test','models','probe'].includes(body.action))throw Error('未知操作。')
       return Response.json({ok:true,value:await intranet(body.action,body.input)})
     }catch(error){return Response.json({ok:false,error:{message:error.message}})}
   }}),'Workbench intranet settings')

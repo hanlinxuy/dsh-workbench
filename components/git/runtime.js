@@ -1,8 +1,17 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { isAbsolute } from 'node:path'
+import { isAbsolute, win32 } from 'node:path'
 const exec = promisify(execFile)
 const apiWrites = ['issue_create', 'comment_create', 'mr_create', 'mr_comment', 'mr_merge']
+const allowedWrites = (platform, permission) => {
+  const selected = permission ? permission.write ? apiWrites : ['issue_create'] : platform.apiWrites ?? []
+  return selected.filter(action => (platform.apiWrites === undefined || platform.apiWrites.includes(action)) && (platform.network === 'internal' || ['issue_create', 'comment_create'].includes(action)))
+}
+export function remoteHost(url) {
+  if (isAbsolute(url) || win32.isAbsolute(url)) return 'local'
+  if (url.includes('://')) { const parsed = new URL(url); return parsed.protocol === 'file:' ? parsed.hostname || 'local' : parsed.hostname }
+  return /^(?:[^@/:]+@)?([^/:]+):[^/].*$/.exec(url)?.[1]
+}
 const mrActions = ['mr_list', 'mr_get', 'mr_comments_list', 'mr_create', 'mr_comment', 'mr_merge']
 // Exact branch names only: no patterns, revision expressions, options or ref traversal.
 const validBranch = value => typeof value === 'string' && value.length > 0 && !value.startsWith('-') && !value.startsWith('/') && !value.endsWith('/') && !value.endsWith('.') && !/[\s\x00-\x1f\x7f~^:?*\[\\]/.test(value) && !value.includes('..') && !value.includes('@{') && value !== '@' && value.split('/').every(part => part && !part.startsWith('.') && !part.endsWith('.lock'))
@@ -54,15 +63,15 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
       const platformId = configured?.[0] ?? "discovered"
       const platform = configured?.[1] ?? (host === "github.com" ? { kind: "github", network: "external", hosts: [host, "api.github.com"], apiBase: "https://api.github.com", githubLogin: true } : { kind: "git", network: "external", hosts: [host || "unknown"] })
       const permission=await permissionFor(platform.hosts)
-      const readOnly = { ...platform, apiWrites: permission ? permission.write ? apiWrites : ['issue_create'] : [] }
+      const readOnly = { ...platform, apiWrites: allowedWrites(platform, permission) }
       return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: permission?.write===true, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: permission?.push===true } } : {} } } }, execute, permissionFor)({ ...args, repository: "current" }, signal)
     }
     const { action, repository, remote = 'origin', branch, message, paths, number, title, body, page = 1, source_branch, target_branch } = args
     if (action === 'catalog') {
       const policies=Object.fromEntries(await Promise.all(Object.entries(platforms).map(async([id,p])=>[id,await permissionFor(p.hosts)])))
       return JSON.stringify({
-        platforms:Object.fromEntries(Object.entries(platforms).map(([id,p])=>[id,{kind:p.kind,network:p.network,apiWrites:policies[id]?(policies[id].write?apiWrites.filter(a=>p.network==='internal'||['issue_create','comment_create'].includes(a)):['issue_create']):p.apiWrites??[]}])),
-        repositories:Object.fromEntries(Object.entries(repositories).map(([id,r])=>[id,{localWrite:policies[r.platform??r.remotes?.origin?.platform]?.write??r.localWrite===true,platform:r.platform,mergeTargetBranches:r.mergeTargetBranches??[],remotes:Object.fromEntries(Object.entries(r.remotes??{}).map(([name,rule])=>[name,{platform:rule.platform,fetch:rule.fetch===true,push:platforms[rule.platform].network==='internal'&&(policies[rule.platform]?.push??rule.push===true)}]))}]))
+        platforms:Object.fromEntries(Object.entries(platforms).map(([id,p])=>[id,{kind:p.kind,network:p.network,apiWrites:allowedWrites(p,policies[id]),permissionSource:policies[id]?'settings intersect explicit configuration':'configuration'}])),
+        repositories:Object.fromEntries(Object.entries(repositories).map(([id,r])=>[id,{localWrite:r.localWrite!==false&&(policies[r.platform??r.remotes?.origin?.platform]?.write??r.localWrite===true),platform:r.platform,mergeTargetBranches:r.mergeTargetBranches??[],remotes:Object.fromEntries(Object.entries(r.remotes??{}).map(([name,rule])=>[name,{platform:rule.platform,fetch:rule.fetch===true,push:platforms[rule.platform].network==='internal'&&rule.push!==false&&(policies[rule.platform]?.push??rule.push===true)}]))}]))
       })
     }
     const repo = Object.hasOwn(repositories, repository) ? repositories[repository] : undefined
@@ -85,7 +94,7 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
       }
       if (['stage', 'commit', 'switch'].includes(action)) {
         const permission=await permissionFor(platforms[repo.platform ?? repo.remotes?.[remote]?.platform]?.hosts ?? [])
-        if (permission && !permission.write)throw new Error('Local writes are disabled by platform settings')
+        if (repo.localWrite === false || (permission && !permission.write))throw new Error('Local writes are disabled by platform settings')
         if (!permission && repo.localWrite !== true) throw new Error('Local writes are disabled')
         if (action === 'stage') {
           if (!Array.isArray(paths) || !paths.length || paths.some(path => typeof path !== 'string' || !path || isAbsolute(path) || path.split(/[\\/]/).includes('..') || path.startsWith(':'))) throw new Error('Supply relative literal file paths')
@@ -104,21 +113,18 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
         if (!rule) throw new Error('Remote is not configured')
         const platform = platforms[rule.platform]
         const permission=await permissionFor(platform.hosts)
-        if (action === 'push' && (platform.network === 'external' || (permission ? !permission.push : rule.push !== true))) throw new Error('Push is disabled for this remote')
+        if (action === 'push' && (platform.network === 'external' || rule.push === false || (permission ? !permission.push : rule.push !== true))) throw new Error('Push is disabled for this remote')
         if (action !== 'push' && rule.fetch !== true) throw new Error('Remote reads are disabled for this remote')
         // get-url expands insteadOf/pushInsteadOf; verify every push destination.
         const urls = (await git(['remote', 'get-url', ...(action === 'push' ? ['--push'] : []), '--all', remote])).trim().split('\n')
         if (urls.some(url => url !== rule.url)) throw new Error('Remote URL changed; operator must update configuration')
-        let host
-        if (rule.url.includes('://')) host = new URL(rule.url).hostname
-        else host = /^(?:[^@/:]+@)?([^/:]+):[^/].*$/.exec(rule.url)?.[1]
-        if (!host && isAbsolute(rule.url)) host = 'local'
-        if (!platform.hosts.includes(host)) throw new Error('Remote host is not allowed')
+        const host = remoteHost(rule.url)
+        if (!platform.hosts.includes(host)) throw new Error(`Remote host is not allowed: ${host ?? 'unrecognized'}`)
         if (action === 'fetch') return git(['-c', 'http.followRedirects=false', 'fetch', '--no-recurse-submodules', remote])
         if (typeof branch !== 'string' || branch.startsWith('-')) throw new Error('Explicit destination branch required')
         await git(['check-ref-format', `refs/heads/${branch}`])
         if (action === 'remote_head') return git(['-c', 'http.followRedirects=false', 'ls-remote', '--exit-code', '--heads', remote, `refs/heads/${branch}`])
-        return git(['-c', 'http.followRedirects=false', '-c', 'push.followTags=false', 'push', '--no-follow-tags', '--recurse-submodules=no', remote, `HEAD:refs/heads/${branch}`])
+        return git(['-c', 'http.followRedirects=false', '-c', 'push.followTags=false', 'push', '--no-follow-tags', '--recurse-submodules=no', remote, `refs/heads/${branch}:refs/heads/${branch}`])
       }
       const platform = platforms[repo.platform]
       if (!platform || platform.kind === 'git' || !repo.apiRepo) throw new Error('No API adapter configured for this repository')
@@ -126,9 +132,9 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
       const mr = mrActions.includes(action)
       if (mr && platform.kind !== 'gitlab') throw new Error('MR operations require a GitLab adapter')
       const write = apiWrites.includes(action)
-      const permission=await permissionFor(platform.hosts)
-      if (write && !(permission ? action==='issue_create'||permission.write : platform.apiWrites?.includes(action))) throw new Error('API write is disabled')
       if (mr && write && platform.network !== 'internal') throw new Error('MR writes require an internal platform')
+      const permission=await permissionFor(platform.hosts)
+      if (write && !allowedWrites(platform, permission).includes(action)) throw new Error('API write is disabled')
       if (['issue_get', 'comments_list', 'comment_create'].includes(action) && (!Number.isSafeInteger(number) || number < 1)) throw new Error('Positive issue number required')
       if (['mr_get', 'mr_comments_list', 'mr_comment', 'mr_merge'].includes(action) && (!Number.isSafeInteger(number) || number < 1)) throw new Error('Positive MR number required')
       if (!Number.isSafeInteger(page) || page < 1) throw new Error('Positive page required')
