@@ -4,10 +4,10 @@
 
 | 能力 | 完整套装 | Core 内网套装 |
 | --- | --- | --- |
-| Chief 0.3.3 | 开启 | 开启 |
+| Chief 0.3.4 | 开启 | 开启 |
 | Browser / agent-browser 0.41.2 | 开启 | 开启 |
 | Desktop / agent-desktop 1.2.0 | 开启 | 开启 |
-| Git 0.1.1 | 开启，仓库为空 | 开启，仓库为空 |
+| Git 0.1.2 | 开启，自动识别当前仓库 | 开启，自动识别当前仓库 |
 | ChatGPT provider 0.1.18 | 安装，关闭 | 不安装 |
 
 本机推荐完整套装，需要订阅模型时再打开 ChatGPT；内网推荐 Core，使用已有 vLLM 配置。
@@ -16,21 +16,21 @@ Desktop 默认开，但系统权限不会自动授予。Windows 原生操作尚�
 
 ## 一次安装
 
-DSH 添加插件输入以下来源之一，正式环境将 `main` 替换为验收提交：
+DSH 添加插件输入以下来源之一，正式环境将发布分支替换为该发布分支的验收提交：
 
 ```text
-github:hanlinxuy/dsh-workbench#main&path:/bundles/workbench
-github:hanlinxuy/dsh-workbench#main&path:/bundles/core
+git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench
+git+https://github.com/hanlinxuy/dsh-workbench.git#release/core
 ```
 
-仓库根 URL 仍不是插件包。也可以继续独立安装 `plugins/chief`、`plugins/browser`、
+`main` 根目录不是插件包；上述发布分支的根目录就是套装。也可以继续独立安装 `plugins/chief`、`plugins/browser`、
 `plugins/desktop`、`plugins/git`。独立插件与套装不要重复启用。
 
 需要 Node 24+、pnpm、Git 与兼容 DSH。CLI 安装例子：
 
 ```sh
 dsh plugin --profile web add --allow-build=agent-browser --allow-build=agent-desktop \
-  'github:hanlinxuy/dsh-workbench#main&path:/bundles/workbench'
+  'git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench'
 ```
 
 UI 若弹构建确认，只放行上述两个固定依赖。没有 Git 子依赖，不关闭 pnpm 的 exotic-subdependency 保护。
@@ -44,7 +44,7 @@ Chief 的 preset 与管理插件共用一个开关；关闭后入口和 preset �
 ChatGPT 关闭时不注册 provider、不显示授权界面，启用后再自行登录。
 
 Chief 左侧入口及项目看板保持原样。工具遵循各自的会话权限，套装不会扩大 Chief 的执行权限。
-Git 按 [Git 文档](../plugins/git/README.md) 配置仓库：空配置不授权任何远端；外网 push 默认禁止，
+Git 按 [Git 文档](../plugins/git/README.md) 配置仓库：空配置自动识别当前工作区并允许只读访问；外网 push 默认禁止，
 API 写入只可按策略开放 issue/comment。插件约束只覆盖插件入口，不是宿主 Bash 的全局防火墙。
 
 ## 更新与回滚
@@ -89,3 +89,5 @@ Windows 实机、跨状态格式迁移、已有 standalone 自动迁移未在此
 ## 0.1.1 显示修正
 
 套装及自建组件增加中英文名称和简短说明，组件使用包入口避免展示本机文件路径。Chief 前端与管理能力由套装主入口统一加载；浏览器、桌面和 Git 保持独立开关。ChatGPT 沿用上游元数据。发行默认仍关闭 ChatGPT，本机手动开启的状态保存在 profile，升级保留。
+
+提交生成产物后运行 `pnpm release:bundles`，把两个套装拆成根目录可安装的 `release/core`、`release/workbench` 分支。验证分支固定提交后再推送它们；发布分支不手工编辑。这样用户仍只需在添加插件框粘贴 Git 地址，不经过 `&path:`。

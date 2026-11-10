@@ -32,7 +32,7 @@ pnpm harness stop chief-fix
 初始化拒绝覆盖已有目录。先验证端口空闲；start 只表示已启动子进程，需核对 status 和该目录私有 host.log 确认宿主就绪。
 从 host.log 取得完整登录 URL，在浏览器打开；不要将它输出到公开报告。
 stop 为正常终止请求，等待 status 显示不再运行后再安装或升级。
-安装命令调用 `dsh plugin --profile web add`，保留 bundle 登记，而非仅 pnpm add。
+安装命令调用 `dsh plugin --profile web add`，并检查直接依赖确为 bundle 且已登记；普通依赖或漏登记会失败。套装优先使用 `release/core` / `release/workbench` 的固定提交，避免宿主子目录解析差异。
 Git prepare 的授权按具体插件说明处理；不要关闭所有构建限制。
 
 未推送的改动可先 `pnpm build && pnpm test && pnpm check && pnpm pack:chief`，

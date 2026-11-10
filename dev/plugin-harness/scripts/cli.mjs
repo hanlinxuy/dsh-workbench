@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile, open } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { spawn, spawnSync } from 'node:child_process'
+import { verifyInstall } from './verify-install.mjs'
 
 const [command, name, ...args] = process.argv.slice(2)
 if (!['init', 'install', 'start', 'status', 'stop'].includes(command) || !/^[a-z0-9][a-z0-9-]{0,60}$/.test(name ?? '')) {
@@ -28,6 +29,7 @@ if (command === 'init') {
     const result = spawnSync(bin, ['plugin', '--profile', 'web', 'add', source], { env, stdio: 'inherit' })
     if (result.error) throw result.error
     if (result.status !== 0) process.exit(result.status ?? 1)
+    await verifyInstall(join(home, 'profiles', 'web'))
     state.installs.push({ source, at: new Date().toISOString() })
   } else if (command === 'start') {
     if (alive) throw new Error('Harness is already running')

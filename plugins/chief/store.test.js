@@ -21,6 +21,38 @@ test('persists ordered state and excludes a second writer', async () => {
   } finally { await rm(dir, { recursive: true, force: true }) }
 })
 
+test('concurrent opens diagnose in-process reentry and close is idempotent', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'chief-reentry-'))
+  const results = await Promise.allSettled([openStore(dir), openStore(join(dir, '.'))])
+  const store = results.find(result => result.status === 'fulfilled')?.value
+  try {
+    assert.equal(results.filter(result => result.status === 'fulfilled').length, 1)
+    const error = results.find(result => result.status === 'rejected').reason
+    assert.match(error.message, /already opening\/open in this process/)
+    assert.ok(error.message.includes(`pid ${process.pid}`))
+    assert.ok(error.message.includes('chief-reentry-'))
+    await Promise.all([store.close(), store.close()])
+    const next = await openStore(dir)
+    await next.close()
+  } finally { await store?.close(); await rm(dir, { recursive: true, force: true }) }
+})
+
+test('failed state save still closes memory and releases the writer lease', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'chief-save-fail-'))
+  const store = await openStore(dir)
+  try {
+    // A directory at the atomic-write target forces rename to fail on every OS.
+    const { mkdir } = await import('node:fs/promises')
+    await mkdir(join(dir, 'state.json'))
+    await assert.rejects(store.save())
+    await assert.rejects(store.close())
+    await assert.rejects(store.memory.update({ id: 'a', name: 'A' }, {}), /closing/)
+    await rm(join(dir, 'state.json'), { recursive: true })
+    const next = await openStore(dir)
+    await next.close()
+  } finally { await store.close().catch(() => {}); await rm(dir, { recursive: true, force: true }) }
+})
+
 test('refuses invalid persisted state rather than replacing it', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'chief-store-'))
   try {
@@ -38,7 +70,13 @@ test('writer lease is released after abrupt process exit', async () => {
   const child = spawn(process.execPath, ['--input-type=module', '-e', `import {openStore} from ${JSON.stringify(moduleUrl)}; await openStore(${JSON.stringify(dir)}); process.stdout.write('ready\\n'); setInterval(()=>{},1000)`], {stdio:['ignore','pipe','inherit']})
   try {
     await once(child.stdout, 'data')
-    await assert.rejects(openStore(dir), /locked/)
+    await assert.rejects(openStore(dir), error => {
+      assert.match(error.message, /writer lease unavailable/)
+      assert.match(error.message, /another process or store instance/)
+      assert.match(error.cause.message, /locked/)
+      assert.ok(error.message.includes(`pid ${process.pid}`))
+      return true
+    })
     child.kill('SIGKILL')
     await once(child, 'exit')
     const reopened = await openStore(dir)

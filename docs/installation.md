@@ -37,13 +37,38 @@ dsh --profile web --host 127.0.0.1 --port 19451 --no-open
 `chiefSessionId` 指回对应的 `previousChiefSessionIds`，并同步指向新 Chief 的 `route.sessionId`。
 保留全部历史；不要在运行中修改状态文件。
 
-## 分发方式
+## Git 安装与子目录兼容性
 
-源码仓库使用 pnpm workspace，插件独立打包。当前支持 clone → pack → DSH plugin add。
-暂未发布 npm 包。已验证 pnpm Git 子目录安装 Chief（DSH 0.2.1-rc.5 / pnpm 11.18.0）：
+在 DSH「插件 → 添加插件」粘贴一条地址即可：
 
-```sh
-dsh plugin --profile web add 'github:hanlinxuy/dsh-workbench#0ffb7a5&path:/plugins/chief'
+```text
+git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench
 ```
 
-引号不可省略，避免 shell 解释 `&`。固定提交便于回滚；配合 ChatGPT provider 的独立安装步骤见 [ChatGPT 指南](chatgpt-provider.md)。
+内网使用 `#release/core`（不包含 ChatGPT）。正式部署将发布分支换成**该分支的**验收提交；不能换成 `main` 的源码提交。发布分支只包含对应套装，自带 bundle 元数据，不依赖 `&path:` 解析。
+
+Issue #4 报告 Windows DSH 0.2.1-rc.5 的子目录参数被丢弃，但用户也报告内网 GUI 使用 `git+https://…&path:` 成功。本机检查的 DSH 包保留原始 spec，因此不能把所有版本/入口一概归因于宿主归一化。Workbench 采用包根发布分支，消除这一安装歧义；没有修改 DSH 自身解析器。
+
+CLI 需要把整个 Git 地址引起来；未经引号包裹的 `&` 会被部分 shell 当成命令分隔符。已有 `&path:/plugins/chief` 等独立插件安装仍保留，但受影响环境可用打包产物：
+
+```sh
+pnpm install --frozen-lockfile
+pnpm pack:core
+# 完整套装用 pnpm pack:suite；Chief 用 pnpm build && pnpm pack:chief
+dsh plugin --profile <实际-profile> add <tgz-绝对路径>
+```
+
+安装时只放行固定的 agent-browser / agent-desktop 构建。Windows 需要 Node 24+ 与 Git 在 PATH 中。
+
+### 成功判据
+
+- 安装的包名必须为 `dsh-workbench-core` / `dsh-workbench-suite`，不是源码根包 `dsh-workbench`。
+- profile `package.json` 的 `dsh.profile.bundles` 必须包含该包；仅 `pnpm add` 并不等于登记插件。
+- 启动后 Chief state / board 可读取；重新启动保留 Chief 会话及项目状态。
+- 看到 `declares no dsh.bundle` 或 `installed as a plain dependency` 就视作失败，不继续派任务。
+
+Harness 安装会检查登记结果并以非零状态拒绝“普通依赖装好了、插件却没登记”的情况。
+
+### 发布维护
+
+源码仍只维护在 `plugins/*`。更新固定组件提交并生成、提交套装后，运行 `pnpm release:bundles`，得到 `release/core` 与 `release/workbench` 的包根分支及提交。验证固定提交，再推送；该命令本身不推送，也不修改 profile。
