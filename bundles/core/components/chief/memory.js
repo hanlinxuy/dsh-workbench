@@ -25,10 +25,10 @@ export function parseMemory(text) {
 export function emptyMemory() {
   return Object.fromEntries(memoryFields.map(key => [key, '']))
 }
-export async function openMemory(directory) {
+export async function openMemory(directory, execute = exec) {
   await mkdir(join(directory, 'projects'), { recursive: true, mode: 0o700 })
   await mkdir(join(directory, 'reviews'), { recursive: true, mode: 0o700 })
-  const git = args => exec('git', ['-C', directory, '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', '-c', 'user.name=DSH Chief', '-c', 'user.email=chief@localhost', ...args])
+  const git = args => execute('git', ['-C', directory, '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', '-c', 'user.name=DSH Chief', '-c', 'user.email=chief@localhost', ...args])
   await git(['init', '--quiet'])
   const records = new Map()
   const reviews = new Map()

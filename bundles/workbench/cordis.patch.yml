@@ -67,6 +67,7 @@
             enabled: false
             maxAgeDays: 0
             maxBytes: 0
+      disabled: true
     - id: chatgpt
       disabled: true
       name: 'dsh-plugin-chatgpt'

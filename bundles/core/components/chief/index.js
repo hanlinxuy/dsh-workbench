@@ -10,9 +10,26 @@ import { readResult, readSessionEvents } from './history.js'
 import { restoreChiefPreset } from './chief-session.js'
 
 export const name = 'independent-chief'
-export const inject = ['tools', 'agents', 'systemPrompt', 'sessionController', 'sessions', 'sessionTitle', 'workspaceRegistry', 'connection', 'agentPresets']
+export const inject = ['tools', 'agents', 'systemPrompt', 'sessionController', 'sessions', 'sessionTitle', 'workspaceRegistry', 'connection', 'agentPresets', 'subprocess']
 
 export function apply(ctx, config = {}) {
+  // Use the host's managed subprocess provider, including cancellation and
+  // scrubbed environment. Never forward all of process.env back into it.
+  const exec = async (file, args, options = {}) => {
+    const signal = AbortSignal.any([AbortSignal.timeout(options.timeout ?? 60000), ...(options.signal ? [options.signal] : [])])
+    const child = ctx.subprocess.spawn({ argv: [file, ...args], cwd: options.cwd ?? process.cwd(),
+      stdio: { stdin: 'ignore', stdout: { maxBytes: options.maxBuffer ?? 2097152 }, stderr: { maxBytes: 65536 } },
+      graceMs: 1000, signal, env: options.env })
+    const outcome = await child.done
+    const stdout = child.collected.stdout.readFrom(0)
+    if (outcome.exitCode !== 0 || signal.aborted || stdout.lossy) {
+      const error = new Error('Host subprocess failed or output exceeded limit')
+      error.code = outcome.exitCode
+      throw error
+    }
+    return { stdout: stdout.text }
+  }
+
   const directory = config.home ?? join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'independent-chief')
   let controller
   let store
@@ -26,7 +43,7 @@ export function apply(ctx, config = {}) {
     isStopped = stopped
     initialized = false
     initError = undefined
-    const opened = await openStore(directory)
+    const opened = await openStore(directory, exec)
     let stopPolling
     const activeActivity = createActivity()
     activity = activeActivity

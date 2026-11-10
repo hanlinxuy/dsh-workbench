@@ -8,7 +8,7 @@ const mrActions = ['mr_list', 'mr_get', 'mr_comments_list', 'mr_create', 'mr_com
 const validBranch = value => typeof value === 'string' && value.length > 0 && !value.startsWith('-') && !value.startsWith('/') && !value.endsWith('/') && !value.endsWith('.') && !/[\s\x00-\x1f\x7f~^:?*\[\\]/.test(value) && !value.includes('..') && !value.includes('@{') && value !== '@' && value.split('/').every(part => part && !part.startsWith('.') && !part.endsWith('.lock'))
 
 // Configuration is operator-owned, loaded once. Tools cannot mutate policy.
-export function createGit(config = {}) {
+export function createGit(config = {}, execute = exec) {
   const { platforms = {}, repositories = {} } = config
   for (const [id, platform] of Object.entries(platforms)) {
     if (!['internal', 'external'].includes(platform.network)) throw new Error(`Invalid network: ${id}`)
@@ -40,13 +40,13 @@ export function createGit(config = {}) {
   return async (args, signal, cwd) => {
     // Discover only the active workspace; explicit operator policies still win.
     if (cwd && (!args.repository || args.repository === "current") && !repositories.current) {
-      const { stdout } = await exec("git", ["-C", cwd, "rev-parse", "--show-toplevel"], { signal, timeout: 10000 })
+      const { stdout } = await execute("git", ["-C", cwd, "rev-parse", "--show-toplevel"], { signal, timeout: 10000 })
       const path = stdout.trim()
       const known = Object.entries(repositories).find(([, repo]) => repo.path === path)
-      if (known) return createGit(config)({ ...args, repository: known[0] }, signal)
+      if (known) return createGit(config, execute)({ ...args, repository: known[0] }, signal)
       const remote = args.remote ?? "origin"
       if (!/^[A-Za-z0-9_.-]+$/.test(remote) || remote.startsWith("-")) throw new Error("Invalid remote name")
-      const result = await exec("git", ["-C", path, "config", "--get", `remote.${remote}.url`], { signal, timeout: 10000 }).catch(error => { if (error.code === 1) return { stdout: "" }; throw error })
+      const result = await execute("git", ["-C", path, "config", "--get", `remote.${remote}.url`], { signal, timeout: 10000 }).catch(error => { if (error.code === 1) return { stdout: "" }; throw error })
       const raw = result.stdout.trim()
       const match = /^(?:https?:\/\/|ssh:\/\/)?(?:[^@/]+@)?([^/:]+)[:/](.+?)(?:\.git)?$/.exec(raw)
       const host = match?.[1], apiRepo = match?.[2]
@@ -54,7 +54,7 @@ export function createGit(config = {}) {
       const platformId = configured?.[0] ?? "discovered"
       const platform = configured?.[1] ?? (host === "github.com" ? { kind: "github", network: "external", hosts: [host, "api.github.com"], apiBase: "https://api.github.com", githubLogin: true } : { kind: "git", network: "external", hosts: [host || "unknown"] })
       const readOnly = { ...platform, apiWrites: [] }
-      return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: false, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: false } } : {} } } })({ ...args, repository: "current" }, signal)
+      return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: false, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: false } } : {} } } }, execute)({ ...args, repository: "current" }, signal)
     }
     const { action, repository, remote = 'origin', branch, message, paths, number, title, body, page = 1, source_branch, target_branch } = args
     if (action === 'catalog') return JSON.stringify({
@@ -64,9 +64,9 @@ export function createGit(config = {}) {
     const repo = Object.hasOwn(repositories, repository) ? repositories[repository] : undefined
     if (!repo) throw new Error('Repository is not configured')
     const git = async argv => {
-      const { stdout } = await exec('git', ['--no-pager', '-C', repo.path, ...argv], {
+      const { stdout } = await execute('git', ['--no-pager', '-C', repo.path, ...argv], {
         signal, timeout: 60000, maxBuffer: 2 * 1024 * 1024,
-        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+        env: { GIT_TERMINAL_PROMPT: '0' },
       }).catch(error => { throw new Error(`Git command failed (${error.code ?? 'terminated'}); inspect repository/credentials locally. No write is automatically retried.`) })
       return stdout
     }
@@ -137,7 +137,7 @@ export function createGit(config = {}) {
       const url = new URL(platform.apiBase.replace(/\/$/, '') + '/' + prefix + suffix)
       if (['issues_list', 'comments_list', 'mr_list', 'mr_comments_list'].includes(action)) { url.searchParams.set('per_page', '30'); url.searchParams.set('page', String(page)) }
       let token = platform.tokenEnv ? process.env[platform.tokenEnv] : undefined
-      if (!token && platform.githubLogin) token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || (await exec("gh", ["auth", "token", "--hostname", "github.com"], { signal, timeout: 10000 }).catch(() => ({ stdout: "" }))).stdout.trim()
+      if (!token && platform.githubLogin) token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || (await execute("gh", ["auth", "token", "--hostname", "github.com"], { signal, timeout: 10000 }).catch(() => ({ stdout: "" }))).stdout.trim()
       if (platform.tokenEnv && !token) throw new Error(`Credential environment variable missing: ${platform.tokenEnv}`)
       const headers = { Accept: 'application/json', 'Content-Type': 'application/json', ...(token ? github ? { Authorization: `Bearer ${token}` } : { 'PRIVATE-TOKEN': token } : {}) }
       const request = async (target, method = 'GET', payload) => {
