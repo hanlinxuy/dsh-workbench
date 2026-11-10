@@ -21,11 +21,13 @@ export async function registerInstalledBundles(profile) {
   const {writeFile,rename}=await import('node:fs/promises')
   const file=join(profile,'package.json'),manifest=JSON.parse(await readFile(file,'utf8'))
   const additions=[]
+  const migration=await readFile(join(profile,'workbench-migration.json'),'utf8').then(JSON.parse,e=>{if(e.code==='ENOENT')return {handled:[]};throw e})
+  const suite=Object.keys(manifest.dependencies??{}).some(name=>['dsh-workbench-core','dsh-workbench-suite'].includes(name))
   for(const name of Object.keys(manifest.dependencies??{})){
     const pkg=JSON.parse(await readFile(join(profile,'node_modules',name,'package.json'),'utf8'))
     if(!pkg.dsh?.bundle?.patch)throw Error(`${name} is not a DSH bundle; no registration changed`)
     await readFile(join(profile,'node_modules',name,pkg.dsh.bundle.patch),'utf8')
-    additions.push(name)
+    if(!(suite && migration.handled.includes(name)))additions.push(name)
   }
   manifest.dsh??={};manifest.dsh.profile??={};manifest.dsh.profile.bundles=[...new Set([...(manifest.dsh.profile.bundles??[]),...additions])]
   await writeFile(file+'.tmp',JSON.stringify(manifest,null,2)+'\n');await rename(file+'.tmp',file)

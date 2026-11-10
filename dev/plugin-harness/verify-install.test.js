@@ -30,10 +30,13 @@ test('migrated standalone bundles may remain installed but require an active sui
     for(const name of names){
       await mkdir(join(profile,'node_modules',name),{recursive:true})
       await writeFile(join(profile,'node_modules',name,'package.json'),JSON.stringify({dsh:{bundle:{patch:'patch.yml'}}}))
+      await writeFile(join(profile,'node_modules',name,'patch.yml'),'[]')
     }
     const manifest={dependencies:Object.fromEntries(names.map(name=>[name,'1.0.0'])),dsh:{profile:{bundles:['dsh-workbench-core']}}}
     await writeFile(join(profile,'package.json'),JSON.stringify(manifest))
     await writeFile(join(profile,'workbench-migration.json'),JSON.stringify({handled:['dsh-x-memory']}))
+    const {registerInstalledBundles}=await import('./scripts/verify-install.mjs')
+    await registerInstalledBundles(profile)
     assert.deepEqual(await verifyInstall(profile),names)
     manifest.dsh.profile.bundles=[]
     await writeFile(join(profile,'package.json'),JSON.stringify(manifest))
