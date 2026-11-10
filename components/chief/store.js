@@ -8,7 +8,7 @@ const writers = new Set()
 // A SQLite write transaction is an operating-system-released single-writer
 // lease. Never share a mutable store between independent controllers or wait
 // synchronously for a lock that this same event loop must release.
-export async function openStore(directory) {
+export async function openStore(directory, execute) {
   await mkdir(directory, { recursive: true, mode: 0o700 })
   directory = await realpath(directory)
   const key = process.platform === 'win32' ? directory.toLowerCase() : directory
@@ -33,7 +33,7 @@ export async function openStore(directory) {
       state = { version: 1, chiefSessionId: null, projects: [], route: null }
     }
     if (state.version !== 1 || !Array.isArray(state.projects)) throw new Error('Unsupported Chief state')
-    memory = await openMemory(join(directory, 'memory'))
+    memory = await openMemory(join(directory, 'memory'), execute)
     let pending = Promise.resolve()
     let closing = false
     let closed
