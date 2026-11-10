@@ -1,6 +1,6 @@
 {
   "name": "dsh-workbench-core",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "项目管理、浏览器、桌面操作与 Git 协作，一次安装，按需开启。",
   "private": false,
   "type": "module",
@@ -31,7 +31,6 @@
     "agent-desktop": "1.2.0",
     "dsh-x-memory": "0.1.1",
     "dsh-context": "0.83.1",
-    "dsh-ops": "0.5.2",
     "yaml": "2.9.1"
   },
   "engines": {

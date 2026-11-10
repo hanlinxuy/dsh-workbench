@@ -1,3 +1,5 @@
+> 0.2.3 更新：套装不再依赖或登记 OPS；PowerShell 检测与 WinGet 安装由 Workbench 独立实现。已有独立 OPS 不会被迁移器卸载，仍由用户单独管理。
+
 # Workbench 套装：安装、开关与回滚
 
 ## 选择

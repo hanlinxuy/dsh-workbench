@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { parseDocument, isSeq } from 'yaml'
 
 const packages = {
-  'dsh-x-memory': ['x-memory'], 'dsh-context': ['dsh-context'], 'dsh-ops': ['dsh-ops'],
+  'dsh-x-memory': ['x-memory'], 'dsh-context': ['dsh-context'],
   'dsh-plugin-chatgpt': ['chatgpt'],
 }
 const yamlOptions = { customTags: [{tag:'tag:yaml.org,2002:js',resolve:value=>value}] }

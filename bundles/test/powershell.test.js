@@ -7,7 +7,7 @@ test('PowerShell detection skips other OS and existing 7, distinguishes missing 
  assert.equal((await inspectPowerShell(ready,'darwin',()=>{})).state,'not-needed');assert.equal(calls,0)
  assert.equal((await inspectPowerShell(ready,'win32',()=>{throw Error('must not plan')})).state,'ready')
  assert.equal((await inspectPowerShell(async()=>{throw Error('ENOENT')},'win32',()=>({supported:false}))).state,'unavailable')
- assert.equal((await inspectPowerShell(async()=>({exitCode:0,stdout:'5.1'}),'win32',()=>({supported:true}))).state,'missing')
+ const missing=await inspectPowerShell(async argv=>({exitCode:0,stdout:argv[0]==='pwsh'?'5.1':'v1.12'}),'win32');assert.equal(missing.state,'missing');assert.deepEqual(missing.plan,{supported:true,file:'winget.exe',args:['install','--id','Microsoft.PowerShell','--exact','--source','winget']})
 })
 test('installer exit alone is not proof of availability; errors never retry',async()=>{
  let calls=0
