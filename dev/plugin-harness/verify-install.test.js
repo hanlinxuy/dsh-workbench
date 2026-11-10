@@ -40,3 +40,9 @@ test('migrated standalone bundles may remain installed but require an active sui
     await assert.rejects(verifyInstall(profile),/not registered/)
   } finally { await rm(profile,{recursive:true,force:true}) }
 })
+
+test('CLI installation explicitly registers validated bundles, preserves base and rejects source roots',async()=>{
+ const {registerInstalledBundles}=await import('./scripts/verify-install.mjs')
+ const profile=await mkdtemp(join(tmpdir(),'cli-registration-'))
+ try{await mkdir(join(profile,'node_modules/fixture'),{recursive:true});const manifest={dependencies:{fixture:'1'},dsh:{profile:{bundles:['base']}}};await writeFile(join(profile,'package.json'),JSON.stringify(manifest));await writeFile(join(profile,'node_modules/fixture/package.json'),'{}');await assert.rejects(registerInstalledBundles(profile),/not a DSH bundle/);await writeFile(join(profile,'node_modules/fixture/package.json'),JSON.stringify({dsh:{bundle:{patch:'patch.yml'}}}));await writeFile(join(profile,'node_modules/fixture/patch.yml'),'[]');await registerInstalledBundles(profile);await registerInstalledBundles(profile);assert.deepEqual(await verifyInstall(profile),['fixture'])}finally{await rm(profile,{recursive:true,force:true})}
+})

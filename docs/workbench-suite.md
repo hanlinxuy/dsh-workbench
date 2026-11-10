@@ -118,3 +118,5 @@ GitLab MR 读操作可用，写操作默认禁止。内部平台可显式允许�
 新增 `workbench-provider-gateway`，默认关闭。启用前配置固定回环端口和可信后端，复用“内网连接”的账号、请求头、模型刷新和手动调用测试。详见 [网关说明](../plugins/provider-gateway/README.md)。没有自动复制登录态、启用网关或发布共享凭据。
 
 发布必须通过 `pnpm check`：固定组件的每个分发文件必须与当前源码一致，版本也必须一致。`provenance.json` 的 versions、commits、sha256 分别给出组件版本、固定提交与文件校验值。历史 0.1.5 套装已知落后源码，不再作为 MR/Browser 修复的安装目标；升级到已验收 0.2.7（宿主需 0.2.2-rc.1）。
+
+部分 DSH 版本的 `dsh plugin add` 仅转发 pnpm，不自动启用 bundle。优先使用 DSH 的“添加插件”界面；独立验收使用仓库 plugin-harness，它会验证 bundle 元数据后补齐登记，并拒绝安装到源码根。不要仅凭 pnpm 成功判断插件已启用。

@@ -58,7 +58,8 @@
     "./client": "./components/chief/client.js",
     "./settings": "./settings/runtime.js",
     "./settings/locale/*": "./settings/locale/*",
-    "./provider-gateway": "./components/provider-gateway/index.js"
+    "./provider-gateway": "./components/provider-gateway/index.js",
+    "./provider-gateway/locale/*": "./locale/provider-gateway/*"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh": ">=0.2.2-rc.1 <0.2.3-0"

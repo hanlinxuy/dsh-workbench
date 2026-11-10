@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Local model gateway",
+    "description": "Optional local proxy for authentication and model discovery. Disabled by default."
+  }
+}

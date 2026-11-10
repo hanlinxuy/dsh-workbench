@@ -18,3 +18,10 @@ for (const kind of ['core', 'workbench']) {
   console.log(`${branch}: ${commit} (${pkg.name}@${pkg.version})`)
 }
 console.log('Validate these commits, then push release/core and release/workbench. No profile was changed.')
+// Standalone optional gateway retains the same root-package Git install shape.
+const gatewayBranch='release/provider-gateway'
+const gatewayCommit=git('subtree','split','--prefix=plugins/provider-gateway','HEAD')
+const previousGateway=git('for-each-ref','--format=%(objectname)',`refs/heads/${gatewayBranch}`)
+if(previousGateway)git('merge-base','--is-ancestor',previousGateway,gatewayCommit)
+git('update-ref',`refs/heads/${gatewayBranch}`,gatewayCommit,previousGateway||'0'.repeat(40))
+console.log(`${gatewayBranch}: ${gatewayCommit}`)
