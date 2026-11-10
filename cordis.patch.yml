@@ -10,6 +10,13 @@
       name: dsh-workbench-suite/desktop
     - id: workbench-git
       name: dsh-workbench-suite/git
+    - id: workbench-provider-gateway
+      name: dsh-workbench-suite/provider-gateway
+      disabled: true
+      config:
+        host: 127.0.0.1
+        port: 8790
+        backends: {}
     - id: x-memory
       name: dsh-x-memory
     - id: dsh-context
