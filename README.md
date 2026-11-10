@@ -6,7 +6,7 @@ Chief、Browser、Desktop、Git 默认开启，ChatGPT 默认关闭。独立插�
 在 DSH「添加插件」粘贴：
 
 ```
-github:hanlinxuy/dsh-workbench#main&path:/bundles/workbench
+git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench
 ```
 
 正式环境用已验收提交替换 `main`。需要 DSH、Node 24+、pnpm 与 Git。
@@ -14,7 +14,7 @@ github:hanlinxuy/dsh-workbench#main&path:/bundles/workbench
 
 ```sh
 dsh plugin --profile web add --allow-build=agent-browser --allow-build=agent-desktop \
-  'github:hanlinxuy/dsh-workbench#main&path:/bundles/workbench'
+  'git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench'
 ```
 
 在 DSH 原生插件管理中分别开关 independent-chief、workbench-browser、workbench-desktop、workbench-git、chatgpt。
