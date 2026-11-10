@@ -1,0 +1,11 @@
+{
+  "name":"dsh-workbench-provider-gateway",
+  "version":"0.1.0",
+  "type":"module",
+  "main":"index.js",
+  "exports":{".":"./index.js"},
+  "files":["index.js","runtime.js","cordis.patch.yml","README.md","LICENSE"],
+  "dsh":{"bundle":{"patch":"./cordis.patch.yml"}},
+  "engines":{"node":">=24"},
+  "license":"MIT"
+}
