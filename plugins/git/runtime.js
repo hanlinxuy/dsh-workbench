@@ -8,7 +8,7 @@ const mrActions = ['mr_list', 'mr_get', 'mr_comments_list', 'mr_create', 'mr_com
 const validBranch = value => typeof value === 'string' && value.length > 0 && !value.startsWith('-') && !value.startsWith('/') && !value.endsWith('/') && !value.endsWith('.') && !/[\s\x00-\x1f\x7f~^:?*\[\\]/.test(value) && !value.includes('..') && !value.includes('@{') && value !== '@' && value.split('/').every(part => part && !part.startsWith('.') && !part.endsWith('.lock'))
 
 // Configuration is operator-owned, loaded once. Tools cannot mutate policy.
-export function createGit(config = {}, execute = exec) {
+export function createGit(config = {}, execute = exec, permissionFor = async () => null) {
   const { platforms = {}, repositories = {} } = config
   for (const [id, platform] of Object.entries(platforms)) {
     if (!['internal', 'external'].includes(platform.network)) throw new Error(`Invalid network: ${id}`)
@@ -43,7 +43,7 @@ export function createGit(config = {}, execute = exec) {
       const { stdout } = await execute("git", ["-C", cwd, "rev-parse", "--show-toplevel"], { signal, timeout: 10000 })
       const path = stdout.trim()
       const known = Object.entries(repositories).find(([, repo]) => repo.path === path)
-      if (known) return createGit(config, execute)({ ...args, repository: known[0] }, signal)
+      if (known) return createGit(config, execute, permissionFor)({ ...args, repository: known[0] }, signal)
       const remote = args.remote ?? "origin"
       if (!/^[A-Za-z0-9_.-]+$/.test(remote) || remote.startsWith("-")) throw new Error("Invalid remote name")
       const result = await execute("git", ["-C", path, "config", "--get", `remote.${remote}.url`], { signal, timeout: 10000 }).catch(error => { if (error.code === 1) return { stdout: "" }; throw error })
@@ -53,14 +53,18 @@ export function createGit(config = {}, execute = exec) {
       const configured = Object.entries(platforms).find(([, platform]) => platform.hosts.includes(host))
       const platformId = configured?.[0] ?? "discovered"
       const platform = configured?.[1] ?? (host === "github.com" ? { kind: "github", network: "external", hosts: [host, "api.github.com"], apiBase: "https://api.github.com", githubLogin: true } : { kind: "git", network: "external", hosts: [host || "unknown"] })
-      const readOnly = { ...platform, apiWrites: [] }
-      return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: false, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: false } } : {} } } }, execute)({ ...args, repository: "current" }, signal)
+      const permission=await permissionFor(platform.hosts)
+      const readOnly = { ...platform, apiWrites: permission ? permission.write ? apiWrites : ['issue_create'] : [] }
+      return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: permission?.write===true, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: permission?.push===true } } : {} } } }, execute, permissionFor)({ ...args, repository: "current" }, signal)
     }
     const { action, repository, remote = 'origin', branch, message, paths, number, title, body, page = 1, source_branch, target_branch } = args
-    if (action === 'catalog') return JSON.stringify({
-      platforms: Object.fromEntries(Object.entries(platforms).map(([id, p]) => [id, { kind: p.kind, network: p.network, apiWrites: p.apiWrites ?? [] }])),
-      repositories: Object.fromEntries(Object.entries(repositories).map(([id, r]) => [id, { localWrite: r.localWrite === true, platform: r.platform, mergeTargetBranches: r.mergeTargetBranches ?? [], remotes: Object.fromEntries(Object.entries(r.remotes ?? {}).map(([name, rule]) => [name, { platform: rule.platform, fetch: rule.fetch === true, push: rule.push === true && platforms[rule.platform].network === 'internal' }])) }])),
-    })
+    if (action === 'catalog') {
+      const policies=Object.fromEntries(await Promise.all(Object.entries(platforms).map(async([id,p])=>[id,await permissionFor(p.hosts)])))
+      return JSON.stringify({
+        platforms:Object.fromEntries(Object.entries(platforms).map(([id,p])=>[id,{kind:p.kind,network:p.network,apiWrites:policies[id]?(policies[id].write?apiWrites.filter(a=>p.network==='internal'||['issue_create','comment_create'].includes(a)):['issue_create']):p.apiWrites??[]}])),
+        repositories:Object.fromEntries(Object.entries(repositories).map(([id,r])=>[id,{localWrite:policies[r.platform??r.remotes?.origin?.platform]?.write??r.localWrite===true,platform:r.platform,mergeTargetBranches:r.mergeTargetBranches??[],remotes:Object.fromEntries(Object.entries(r.remotes??{}).map(([name,rule])=>[name,{platform:rule.platform,fetch:rule.fetch===true,push:platforms[rule.platform].network==='internal'&&(policies[rule.platform]?.push??rule.push===true)}]))}]))
+      })
+    }
     const repo = Object.hasOwn(repositories, repository) ? repositories[repository] : undefined
     if (!repo) throw new Error('Repository is not configured')
     const git = async argv => {
@@ -80,7 +84,9 @@ export function createGit(config = {}, execute = exec) {
         return git({ status: ['status', '--short', '--branch'], diff: ['diff', '--no-ext-diff', '--no-textconv'], log: ['log', '-20', '--oneline'], branches: ['branch', '--list'] }[action])
       }
       if (['stage', 'commit', 'switch'].includes(action)) {
-        if (repo.localWrite !== true) throw new Error('Local writes are disabled')
+        const permission=await permissionFor(platforms[repo.platform ?? repo.remotes?.[remote]?.platform]?.hosts ?? [])
+        if (permission && !permission.write)throw new Error('Local writes are disabled by platform settings')
+        if (!permission && repo.localWrite !== true) throw new Error('Local writes are disabled')
         if (action === 'stage') {
           if (!Array.isArray(paths) || !paths.length || paths.some(path => typeof path !== 'string' || !path || isAbsolute(path) || path.split(/[\\/]/).includes('..') || path.startsWith(':'))) throw new Error('Supply relative literal file paths')
           return git(['--literal-pathspecs', 'add', '--', ...paths])
@@ -97,7 +103,8 @@ export function createGit(config = {}, execute = exec) {
         const rule = repo.remotes?.[remote]
         if (!rule) throw new Error('Remote is not configured')
         const platform = platforms[rule.platform]
-        if (action === 'push' && (platform.network === 'external' || rule.push !== true)) throw new Error('Push is disabled for this remote')
+        const permission=await permissionFor(platform.hosts)
+        if (action === 'push' && (platform.network === 'external' || (permission ? !permission.push : rule.push !== true))) throw new Error('Push is disabled for this remote')
         if (action !== 'push' && rule.fetch !== true) throw new Error('Remote reads are disabled for this remote')
         // get-url expands insteadOf/pushInsteadOf; verify every push destination.
         const urls = (await git(['remote', 'get-url', ...(action === 'push' ? ['--push'] : []), '--all', remote])).trim().split('\n')
@@ -119,7 +126,8 @@ export function createGit(config = {}, execute = exec) {
       const mr = mrActions.includes(action)
       if (mr && platform.kind !== 'gitlab') throw new Error('MR operations require a GitLab adapter')
       const write = apiWrites.includes(action)
-      if (write && !platform.apiWrites?.includes(action)) throw new Error('API write is disabled')
+      const permission=await permissionFor(platform.hosts)
+      if (write && !(permission ? action==='issue_create'||permission.write : platform.apiWrites?.includes(action))) throw new Error('API write is disabled')
       if (mr && write && platform.network !== 'internal') throw new Error('MR writes require an internal platform')
       if (['issue_get', 'comments_list', 'comment_create'].includes(action) && (!Number.isSafeInteger(number) || number < 1)) throw new Error('Positive issue number required')
       if (['mr_get', 'mr_comments_list', 'mr_comment', 'mr_merge'].includes(action) && (!Number.isSafeInteger(number) || number < 1)) throw new Error('Positive MR number required')
