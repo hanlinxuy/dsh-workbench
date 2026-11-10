@@ -13,8 +13,18 @@ export function createBrowser({ home, executablePath, headed = false }) {
   const queues = new Map()
   return async ({ action, account = 'default', target, value }, signal) => {
     if (!/^[a-zA-Z0-9_-]{1,48}$/.test(account)) throw new Error('account must contain 1-48 letters, digits, underscores or hyphens')
+    // Fail closed: a caller-supplied confirm flag is not host approval. Do not
+    // forward expressions to AB until per-call approval and audit are verified.
+    if (action === 'eval' || action === 'evaluate') {
+      throw new Error('Browser eval is unavailable: verified per-call host approval and result-safe audit are not integrated; confirm=true does not authorize JavaScript')
+    }
     const commands = {
-      open: () => ['open', new URL(target).href],
+      open: () => {
+        const url = new URL(target)
+        // Navigation must not become an alternate JavaScript execution surface.
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Browser open supports only HTTP(S) URLs')
+        return ['open', url.href]
+      },
       snapshot: () => ['snapshot', '-i'],
       click: () => ['click', target],
       fill: () => ['fill', target, value],
