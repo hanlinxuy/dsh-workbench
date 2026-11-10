@@ -30,6 +30,7 @@ export function apply(ctx) {
       !data?h('p',null,'正在检测当前 DSH 环境…'):h('div',null,
         h('div',{style:card},h('h3',null,'组件登记'),
           data.lastMigration?.application==='restart-required'&&h('p',{role:'status'},'配置已保存，请重启 DSH 后生效。'),
+          data.lastMigration?.warnings?.length>0&&h('p',{role:'status'},data.lastMigration.warnings.join('；')),
           data.migration.changes?h('div',null,h('p',null,`发现 ${data.migration.changes} 个可迁移的独立组件。迁移会备份配置、保留原设置和数据，并去掉重复登记。`),h('p',null,data.migration.components.join(' · ')),
             confirm?h('div',null,h('p',null,'只处理当前 DSH。请在任务结束后执行；若宿主要求重启，页面会明确提示。'),button('确认迁移',()=>run('migrate'))):button('查看并迁移',()=>setConfirm(true)))
           :h('p',null,'组件登记正常，无需迁移。')),
