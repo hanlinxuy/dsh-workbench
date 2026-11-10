@@ -22,3 +22,21 @@ test('an installed source root or unregistered bundle is an installation failure
     assert.deepEqual(await verifyInstall(profile), [name])
   } finally { await rm(profile, { recursive: true, force: true }) }
 })
+
+test('migrated standalone bundles may remain installed but require an active suite', async () => {
+  const profile = await mkdtemp(join(tmpdir(), 'workbench-migrated-'))
+  try {
+    const names=['dsh-x-memory','dsh-workbench-core']
+    for(const name of names){
+      await mkdir(join(profile,'node_modules',name),{recursive:true})
+      await writeFile(join(profile,'node_modules',name,'package.json'),JSON.stringify({dsh:{bundle:{patch:'patch.yml'}}}))
+    }
+    const manifest={dependencies:Object.fromEntries(names.map(name=>[name,'1.0.0'])),dsh:{profile:{bundles:['dsh-workbench-core']}}}
+    await writeFile(join(profile,'package.json'),JSON.stringify(manifest))
+    await writeFile(join(profile,'workbench-migration.json'),JSON.stringify({handled:['dsh-x-memory']}))
+    assert.deepEqual(await verifyInstall(profile),names)
+    manifest.dsh.profile.bundles=[]
+    await writeFile(join(profile,'package.json'),JSON.stringify(manifest))
+    await assert.rejects(verifyInstall(profile),/not registered/)
+  } finally { await rm(profile,{recursive:true,force:true}) }
+})

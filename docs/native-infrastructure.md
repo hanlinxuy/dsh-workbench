@@ -29,7 +29,7 @@ DSH 的 bundle insert 是追加，不会按组件 ID 自动去重。Workbench �
 
 处理范围为已独立安装的 X Memory、Context、OPS，以及完整套装中的 ChatGPT。保留依赖包，只移除冗余 bundle 登记；将原包默认值和启停状态放在原用户 patch 之前，用户配置优先。保留 `!!js` 标记但绝不执行表达式；不搬迁或删除记忆、凭据、模型登录、工作区或会话。重复执行无改动。遇到上游组件布局变化会停止，不猜测旧 OPS 多组件配置如何映射。
 
-修改前将原 `package.json`、`cordis.patch.yml`、迁移记录保存到 profile 内 `.workbench-backups/<时间>/`。回滚时停止 DSH，恢复这三个文件；组件数据从未删除。单独插件依赖保留在 manifest，DSH 将其显示为未启用；运行实例由套装提供。
+修改前将原 `package.json`、`cordis.patch.yml`、迁移记录保存到 profile 内 `.workbench-backups/<时间>/`。回滚迁移时停止 DSH，恢复这三个文件；它们是“套装已安装、迁移尚未执行”的快照，因此还需禁用或移除套装，才能恢复原独立插件启动方式。组件数据从未删除。单独插件依赖保留在 manifest，DSH 将其显示为未启用；运行实例由套装提供。
 
 目前添加插件界面不会自动调用这一步：全新 profile 直接安装；已有独立登记的 profile 需要上述一次迁移。不要把“依赖包只下载一次”误认为“组件只加载一次”。
 

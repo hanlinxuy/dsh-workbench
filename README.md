@@ -64,3 +64,5 @@ Chief 适配过 DSH `0.2.1-rc.5` 的本机 Web profile，DSH 的插件接口仍�
 Windows 和原生 Desktop 未在本公开版本做端到端验证；不保证任意版本可用。
 
 提交前运行 `pnpm test` 和 `pnpm check`。不要提交凭据、个人会话、运行时记忆或内网资料。
+
+原生执行、已有插件重复登记迁移与 PowerShell 7 检测/安装入口，见 [基础设施说明](docs/native-infrastructure.md)；本轮证据见 [0.2.1 隔离验收](docs/acceptance-native-20261110.md)。
