@@ -1,6 +1,6 @@
 {
   "name": "dsh-workbench-suite",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "项目管理、浏览器、桌面操作与 Git 协作，一次安装，按需开启。",
   "private": false,
   "type": "module",

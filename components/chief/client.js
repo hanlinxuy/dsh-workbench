@@ -430,7 +430,7 @@ function apply(ctx) {
   };
   function Settings({ subject }) {
     if (subject.kind !== "bundle" || !["dsh-workbench-core", "dsh-workbench-suite"].includes(subject.pkg.name)) return null;
-    return (0, import_react2.createElement)("div", null, (0, import_react2.createElement)(IntranetPanel), (0, import_react2.createElement)(Panel));
+    return (0, import_react2.createElement)(Panel);
   }
   function Panel() {
     const [data, setData] = (0, import_react2.useState)(), [error, setError] = (0, import_react2.useState)(""), [message, setMessage] = (0, import_react2.useState)(""), [working, setWorking] = (0, import_react2.useState)(false), [confirm, setConfirm] = (0, import_react2.useState)(false);
@@ -496,6 +496,7 @@ function apply(ctx) {
       )
     );
   }
+  ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "workbench-intranet", order: 35, label: () => "\u5185\u7F51\u8FDE\u63A5" }, IntranetPanel));
   ctx.slots.inject("plugins.detail.section", () => ctx.slots.register({ name: "plugins.detail.section", id: "workbench.environment", order: 5 }, Settings));
 }
 ;return module.exports})();const original=module.exports.apply;module.exports={...module.exports,apply:(ctx,config)=>{original(ctx,config);settings.apply(ctx)}};return Object.defineProperty({...module.exports},Symbol.toStringTag,{value:'Module'})}})
