@@ -8,6 +8,17 @@ Chief 会话、调度、事件读取、工作区与工具注册使用 DSH API；
 
 新装套装的 OPS 默认关闭，保留原生工具；X Memory、Context 仍默认开启。需要 OPS 的文件工具/PTC/Bash 时单独开启。已有用户配置的启停值优先。
 
+## 插件设置入口（0.2.2 起）
+
+打开 **Plugins → Workbench Core / Workbench → 环境与迁移**。页面自动检测当前宿主的 profile，不需要输入目录。
+
+- 发现独立组件登记时，显示名称和影响范围；点“查看并迁移”再确认。先备份，再在 DSH 原生配置文件锁与 HMR 独占操作内迁移。正在执行任务时拒绝操作。支持实时重载时直接生效；宿主不支持或重载失败时明确提示重启，不能将保存成功当作运行时已生效。
+- PowerShell 7 显示无需安装、已安装、可安装或缺少 WinGet。Windows 的“安装 PowerShell 7”按钮调用宿主进程服务运行官方 WinGet 安装方案；不需要打开终端。不会绕过系统确认或公司安装政策。退出码不是安装成功证据，安装后再次检测可执行版本；未检测到时显示需处理状态与输出。
+- 已有配置、记忆和凭据保留，备份仍在 profile 的 `.workbench-backups/`。按钮只处理当前 DSH，不触碰其他 profile。
+- Windows 安装器需在 Windows 实机核验。本机 Mac 只验证无需安装分支，受控测试覆盖 Windows 检测和结果分类。
+
+下面保留 CLI 作为无界面环境的备用入口。
+
 ## 已有 profile 的重复登记迁移
 
 DSH 的 bundle insert 是追加，不会按组件 ID 自动去重。Workbench 提供显式离线迁移命令，不通过 npm postinstall 偷改 profile，也不在运行中的 DSH 上改登记。
@@ -31,7 +42,7 @@ DSH 的 bundle insert 是追加，不会按组件 ID 自动去重。Workbench �
 
 修改前将原 `package.json`、`cordis.patch.yml`、迁移记录保存到 profile 内 `.workbench-backups/<时间>/`。回滚迁移时停止 DSH，恢复这三个文件；它们是“套装已安装、迁移尚未执行”的快照，因此还需禁用或移除套装，才能恢复原独立插件启动方式。组件数据从未删除。单独插件依赖保留在 manifest，DSH 将其显示为未启用；运行实例由套装提供。
 
-目前添加插件界面不会自动调用这一步：全新 profile 直接安装；已有独立登记的 profile 需要上述一次迁移。不要把“依赖包只下载一次”误认为“组件只加载一次”。
+全新 profile 直接安装；已有独立登记的 profile 在套装设置中确认迁移，也可用上述备用命令。不要把“依赖包只下载一次”误认为“组件只加载一次”。
 
 ## OPS 与 PowerShell 7
 
