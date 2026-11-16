@@ -1,17 +1,21 @@
 {
   "name": "dsh-workbench-provider-gateway",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "type": "module",
   "main": "index.js",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./pool": "./pool.js"
   },
   "files": [
     "index.js",
     "runtime.js",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "scheduler.js",
+    "pool.js",
+    "probes.js"
   ],
   "dsh": {
     "bundle": {
