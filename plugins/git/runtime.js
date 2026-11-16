@@ -17,7 +17,7 @@ const mrActions = ['mr_list', 'mr_get', 'mr_comments_list', 'mr_create', 'mr_com
 const validBranch = value => typeof value === 'string' && value.length > 0 && !value.startsWith('-') && !value.startsWith('/') && !value.endsWith('/') && !value.endsWith('.') && !/[\s\x00-\x1f\x7f~^:?*\[\\]/.test(value) && !value.includes('..') && !value.includes('@{') && value !== '@' && value.split('/').every(part => part && !part.startsWith('.') && !part.endsWith('.lock'))
 
 // Configuration is operator-owned, loaded once. Tools cannot mutate policy.
-export function createGit(config = {}, execute = exec, permissionFor = async () => null) {
+export function createGit(config = {}, execute = exec, permissionFor = async () => null, authorizeMerge) {
   const { platforms = {}, repositories = {} } = config
   for (const [id, platform] of Object.entries(platforms)) {
     if (!['internal', 'external'].includes(platform.network)) throw new Error(`Invalid network: ${id}`)
@@ -46,13 +46,13 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
     }
   }
   const queues = new Map()
-  return async (args, signal, cwd) => {
+  return async (args, signal, cwd, context) => {
     // Discover only the active workspace; explicit operator policies still win.
     if (cwd && (!args.repository || args.repository === "current") && !repositories.current) {
       const { stdout } = await execute("git", ["-C", cwd, "rev-parse", "--show-toplevel"], { signal, timeout: 10000 })
       const path = stdout.trim()
       const known = Object.entries(repositories).find(([, repo]) => repo.path === path)
-      if (known) return createGit(config, execute, permissionFor)({ ...args, repository: known[0] }, signal)
+      if (known) return createGit(config, execute, permissionFor, authorizeMerge)({ ...args, repository: known[0] }, signal,undefined,context)
       const remote = args.remote ?? "origin"
       if (!/^[A-Za-z0-9_.-]+$/.test(remote) || remote.startsWith("-")) throw new Error("Invalid remote name")
       const result = await execute("git", ["-C", path, "config", "--get", `remote.${remote}.url`], { signal, timeout: 10000 }).catch(error => { if (error.code === 1) return { stdout: "" }; throw error })
@@ -64,7 +64,7 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
       const platform = configured?.[1] ?? (host === "github.com" ? { kind: "github", network: "external", hosts: [host, "api.github.com"], apiBase: "https://api.github.com", githubLogin: true } : { kind: "git", network: "external", hosts: [host || "unknown"] })
       const permission=await permissionFor(platform.hosts)
       const readOnly = { ...platform, apiWrites: allowedWrites(platform, permission) }
-      return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: permission?.write===true, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: permission?.push===true } } : {} } } }, execute, permissionFor)({ ...args, repository: "current" }, signal)
+      return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: permission?.write===true, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: permission?.push===true } } : {} } } }, execute, permissionFor, authorizeMerge)({ ...args, repository: "current" }, signal,undefined,context)
     }
     const { action, repository, remote = 'origin', branch, message, paths, number, title, body, page = 1, source_branch, target_branch } = args
     if (action === 'catalog') {
@@ -173,6 +173,8 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
         if (actual?.target_branch !== target_branch || !repo.mergeTargetBranches.includes(actual.target_branch)) throw new Error('Actual MR target branch does not match the allowlisted target_branch')
         if (actual.state !== 'opened' || actual.iid !== number || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(actual.sha ?? '')) throw new Error('MR must be opened with matching iid and a valid head SHA')
         if(actual.merge_status!=='can_be_merged')throw Error('MR merge_status must be can_be_merged; refresh the MR after checks finish')
+        if(!authorizeMerge)throw Error('not_confirmed: merge authorization requires the DSH host')
+        await authorizeMerge(args.authorization,actual,signal,context)
         // GitLab rejects a changed source head rather than merging unreviewed commits.
         payload = { sha: actual.sha }
       }

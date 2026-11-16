@@ -1,9 +1,17 @@
+import {StoragePanel} from './storage-client.js'
 import {createElement as h,useState,useEffect} from 'react'
 export function CredentialCatalogPanel(){
  const [services,setServices]=useState([]),[draft,setDraft]=useState({}),[error,setError]=useState(''),[busy,setBusy]=useState(false)
  const call=async(action,input)=>{const r=await fetch('api/workbench-credentials',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({action,...input})});const data=await r.json();if(!data.ok)throw Error(data.error.message);return data.value}
  const refresh=()=>call('status').then(setServices).catch(e=>setError(e.message))
  useEffect(()=>{void refresh()},[])
- const save=async ref=>{setBusy(true);setError('');try{await call('set',{ref,value:draft[ref]});setDraft({...draft,[ref]:''});await refresh()}catch(e){setError(e.message)}finally{setBusy(false)}}
- return h('section',{style:{maxWidth:720}},h('h2',null,'服务凭据'),h('p',null,'凭据保存在 DSH 本机凭据库中。这里仅显示保存状态。'),error&&h('p',{role:'alert'},error),...services.map(service=>h('fieldset',{key:service.id,style:{border:'1px solid #555',borderRadius:12,marginBottom:16,padding:16}},h('legend',null,service.title),...service.fields.map(field=>h('div',{key:field.ref,style:{margin:'12px 0'}},h('label',null,field.label,h('input',{type:field.secret?'password':'text',autoComplete:'off',value:draft[field.ref]??'',placeholder:field.configured?'已保存，留空保留':'未填写',disabled:busy||!field.writable,onChange:e=>setDraft({...draft,[field.ref]:e.target.value}),style:{display:'block',width:'100%',padding:8,margin:'6px 0',background:'transparent',color:'inherit',border:'1px solid #666',borderRadius:6}})),h('small',null,`${field.configured?'已保存':'未填写'} · ${field.source??'无来源'}${field.writable?'':' · 只读'}`),h('button',{disabled:busy||!field.writable||!draft[field.ref],onClick:()=>save(field.ref)},'保存'))))),!services.length&&h('p',null,'尚未配置服务目录；由内网适配器声明所需字段和启用的 preset。'))
+ const change=async(action,ref)=>{setBusy(true);setError('');try{await call(action,{ref,value:draft[ref]});setDraft({...draft,[ref]:''});await refresh()}catch(e){setError(e.message)}finally{setBusy(false)}}
+ const groups={identity:'身份',code:'代码平台',model:'模型网关',storage:'存储服务',patent:'专利检索'}
+ return h('section',{style:{maxWidth:720}},h('h2',null,'服务凭据'),h('p',null,'凭据保存在 DSH 本机凭据库中。这里仅显示保存状态。'),error&&h('p',{role:'alert'},error),
+ ...Object.entries(groups).flatMap(([domain,label])=>{
+  const rows=services.filter(s=>s.domain===domain)
+  if(!rows.length)return []
+  return [h('h3',{key:domain},label),...rows.map(service=>h('fieldset',{key:service.id,style:{border:'1px solid #555',borderRadius:12,marginBottom:16,padding:16}},h('legend',null,service.title),service.proxyDescription&&h('p',null,service.proxyDescription),
+   ...service.fields.map(field=>h('div',{key:field.ref,style:{margin:'12px 0'}},h('label',null,field.label,h('input',{type:field.secret?'password':'text',autoComplete:'off',value:draft[field.ref]??'',placeholder:field.configured?'已保存，留空保留':'未填写',disabled:busy||!field.writable,onChange:e=>setDraft({...draft,[field.ref]:e.target.value}),style:{display:'block',width:'100%',padding:8,margin:'6px 0',background:'transparent',color:'inherit',border:'1px solid #666',borderRadius:6}})),h('small',null,`${field.configured?'已保存':'未填写'} · ${field.source??'无来源'}${field.writable?'':' · 只读'}`),h('button',{disabled:busy||!field.writable||!draft[field.ref],onClick:()=>change('set',field.ref)},'保存'),h('button',{disabled:busy||!field.writable||!field.configured,onClick:()=>change('unset',field.ref)},'清除')))))]
+ }),!services.length&&h('p',null,'尚未配置服务目录；由内网适配器声明所需字段和启用的能力。'),h(StoragePanel))
 }

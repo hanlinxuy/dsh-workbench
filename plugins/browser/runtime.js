@@ -67,6 +67,9 @@ export function createBrowser({ home, executablePath, headed = false, accounts={
       const config = join(root, 'browser.json')
       await writeFile(config, '{}', { mode: 0o600 })
       const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|HOME|USERPROFILE|TMP|TEMP|TMPDIR|LANG|LC_.*|SystemRoot|SYSTEMROOT|WINDIR|COMSPEC|PATHEXT|DISPLAY|WAYLAND_DISPLAY|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY)$/i.test(key)))
+      // Desktop's process.execPath is Electron. Keep its child in Node mode
+      // without forwarding the rest of the host environment.
+      if(process.versions.electron)env.ELECTRON_RUN_AS_NODE='1'
       const args = action === 'version' ? ['--version'] : [
         '--config', config, '--session', session, '--profile', join(root, 'profile'),
         '--json', ...(headed ? ['--headed'] : []),

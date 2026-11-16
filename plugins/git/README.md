@@ -126,3 +126,14 @@ stage / commit / switch / fetch / push / mr_create / mr_merge 默认只做预览
 issue_create / comment_create / mr_comment 沿用明确配置的权限，执行一次，不自动重试。写入审计保存在当前 profile 的 `.workbench-private/audit/git.ndjson`，仅记录动作、仓库、参数指纹、状态和耗时，不保存正文或凭据。started 后失败标 outcome_unknown；先查实际结果，不要自动重复写入。
 
 GitLab 合并仅接受 merge_status=can_be_merged，固定实际 MR SHA，提交后 GET 回读 merged 状态。尚未实现根据子代理评审自动批准合并；当前有副作用的合并仍需原生用户确认。
+
+## 写入恢复与合并授权
+
+每次写操作在 profile 私有 `audit/` 中先创建参数指纹的 pending 标记，再执行；标记不含正文或凭据。网络超时、进程中断后标记保留，跨重启再次提交同一动作会返回 `outcome_unknown`，不产生第二次副作用。先用只读动作确认实际状态，再由操作员核对并移除对应 `<fingerprint>.pending.json`；工具不能自行解除。成功写入记录完成并删除 pending 标记。不要仅因看见超时就删除标记。
+
+`mergeAuthorization` 由操作员配置，默认 `user-confirmed`。合并参数 `authorization` 必须带同一 mode：
+
+- `user-confirmed`：`quote` 与 `sourceSeq` 必须对应本会话实际的人类消息；另需原生一次性批准。
+- `auto-reviewed`：提供 `reviewId`，并安装可信 `workbenchGitReview.verify` 宿主适配器。适配器读取真实子代理审查记录，返回 approved、sha、targetBranch、checksPassed、reviewer；工具不接受模型直接填“审查通过”。缺适配器或证据不匹配时拒绝。
+
+两种模式都必须通过目标分支白名单、实际 MR 状态和 SHA 校验，只有 `can_be_merged` 才继续。PUT 后重新 GET 确认 merged；审计只记录模式、来源序号/确认哈希或审查标识，不向 MR 发流程评论。内网审查适配器仍需按实际团队机制接入。

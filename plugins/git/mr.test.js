@@ -1,8 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { tmpdir } from 'node:os'
-import { createGit } from './runtime.js'
+import { createGit as nativeCreateGit } from './runtime.js'
 
+// Runtime tests inject a trusted authorization boundary; host evidence is tested separately.
+const createGit=(...args)=>nativeCreateGit(args[0],args[1],args[2],async()=>({mode:'test'}))
 const config = (platform = {}, repo = {}) => ({
   platforms: { lab: { kind: 'gitlab', network: 'internal', hosts: ['gitlab.example.invalid'], apiBase: 'https://gitlab.example.invalid/api/v4', ...platform } },
   repositories: { fixture: { path: tmpdir(), platform: 'lab', apiRepo: 'group/sub/repo', ...repo } },

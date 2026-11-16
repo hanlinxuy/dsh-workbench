@@ -1,3 +1,4 @@
+import {createStorageRegistry} from './storage.js'
 import {createCredentialCatalog} from './catalog.js'
 import { dirname, join } from 'node:path'
 import { withFileLock } from '@deepseek-ai/dsh-atomic-write'
@@ -20,6 +21,23 @@ export function apply(ctx, config = {}) {
       }catch(error){return Response.json({ok:false,error:{message:error.message}})}
     }}),'Workbench credential catalog')
   }
+
+  const storage=createStorageRegistry({credentials:ctx.credentials,
+    enabled:()=> (config.enabledPresets??[]).includes(config.storagePreset??'data-compute'),
+    read:()=>{const row=ctx.configEditor.configuration().find(r=>r.entry.options.id==='workbench-settings');return row?.override.storage??row?.inherited.storage??config.storage??{}},
+    update:async change=>{
+      const row=ctx.configEditor.configuration().find(r=>r.entry.options.id==='workbench-settings')
+      if(!row)throw Error('Workbench settings configuration row is unavailable')
+      await ctx.configEditor.edit(row.entry,(current,inherited)=>({...current,storage:change(current.storage??inherited.storage??{})}))
+    },
+  })
+  ctx.provide('workbenchStorage',storage)
+  ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-storage',methods:['POST'],requestBody:'buffered',async fetch(request){
+    try{
+      const {action,input}=await request.json()
+      return Response.json({ok:true,value:action==='status'?await storage.status():await storage.change(action,input)})
+    }catch(error){return Response.json({ok:false,error:{message:error.message}})}
+  }}),'Workbench storage credentials')
 
   const intranet=(action,input)=>createIntranetSettings(profile,config.intranetDemo?demoIntranetAdapter:ctx.get('workbenchIntranet'))(action,input)
   ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-intranet',methods:['POST'],requestBody:'buffered',async fetch(request){
