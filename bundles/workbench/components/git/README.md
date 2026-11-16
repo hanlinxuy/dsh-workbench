@@ -118,3 +118,11 @@ SSH remote 不使用 HTTP_PROXY，需由内网既有 SSH ProxyCommand/ProxyJump 
 `repository` 留空或使用 `current`，自动识别会话工作目录的 Git 根目录与 origin。无需登记即可读取状态、日志、分支和 GitHub Issues。GitHub 优先沿用 GH_TOKEN/GITHUB_TOKEN 或已有 gh 登录；公共仓库可匿名读取。未知平台仍可读取本地 Git，API 适配可按域名配置。自动发现不授予写权限，已有仓库规则优先；外网 push 仍禁止。
 
 设置页默认是“读取 + 创建 Issue”，不是纯只读。显式 `apiWrites` 是管理员上限（空数组拒绝所有 API 写入），设置页只能在其范围内放行；未指定 `apiWrites` 时可由设置页管理。`localWrite:false` 和 remote `push:false` 同样不可被开关覆盖。catalog 返回有效权限和 permissionSource。Push 的 branch 同时指定本地源分支与远端目标分支，不使用当前 HEAD。
+
+## 写入预览与确认
+
+stage / commit / switch / fetch / push / mr_create / mr_merge 默认只做预览，不发远程请求。模型传 `confirm:true` 后仍必须通过 DSH 原生一次性审批；没有交互审批通道时拒绝执行。配置里的权限上限依然生效，确认无法打开被禁的外网 push。
+
+issue_create / comment_create / mr_comment 沿用明确配置的权限，执行一次，不自动重试。写入审计保存在当前 profile 的 `.workbench-private/audit/git.ndjson`，仅记录动作、仓库、参数指纹、状态和耗时，不保存正文或凭据。started 后失败标 outcome_unknown；先查实际结果，不要自动重复写入。
+
+GitLab 合并仅接受 merge_status=can_be_merged，固定实际 MR SHA，提交后 GET 回读 merged 状态。尚未实现根据子代理评审自动批准合并；当前有副作用的合并仍需原生用户确认。

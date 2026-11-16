@@ -1,3 +1,4 @@
+import {createCredentialCatalog} from './catalog.js'
 import { dirname, join } from 'node:path'
 import { withFileLock } from '@deepseek-ai/dsh-atomic-write'
 import { inspectPowerShell, installPowerShell, bundledPowerShell, useBundledPowerShell } from './powershell.js'
@@ -5,9 +6,21 @@ import { createIntranetSettings, demoIntranetAdapter } from './intranet.js'
 import { migrate } from '../cli/migrate.mjs'
 
 export const name = 'workbench-settings'
-export const inject = ['connection','configEditor','subprocess','sessionController']
+export const inject = ['connection','configEditor','subprocess','sessionController','credentials']
 export function apply(ctx, config = {}) {
   const profile = dirname(ctx.configEditor.documentPath)
+  {
+    const catalog=createCredentialCatalog(config.services??[],ctx.credentials,config.enabledPresets??[])
+    ctx.provide('workbenchCredentials',catalog)
+    ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-credentials',methods:['POST'],requestBody:'buffered',async fetch(request){
+      try{
+        const {action,ref,value}=await request.json()
+        if(!['status','set','unset'].includes(action))throw Error('Unsupported credential action')
+        return Response.json({ok:true,value:action==='status'?await catalog.status():await catalog[action](ref,value)})
+      }catch(error){return Response.json({ok:false,error:{message:error.message}})}
+    }}),'Workbench credential catalog')
+  }
+
   const intranet=(action,input)=>createIntranetSettings(profile,config.intranetDemo?demoIntranetAdapter:ctx.get('workbenchIntranet'))(action,input)
   ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-intranet',methods:['POST'],requestBody:'buffered',async fetch(request){
     try {
