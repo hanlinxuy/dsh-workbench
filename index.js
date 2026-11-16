@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { readFile, copyFile } from 'node:fs/promises'
+import {createProbes} from './probes.js'
 import { createGateway } from './runtime.js'
 
 export const name='workbench-provider-gateway'
@@ -28,7 +29,9 @@ export async function apply(ctx,config={}) {
   })
   const gateway=createGateway({config,credentials,login,pool:ctx.get('workbenchGatewayPool')})
   await gateway.start()
-  ctx.effect(()=>()=>gateway.close(),'Provider gateway listener')
+  const probeAdapter=ctx.get('workbenchGatewayProbe')
+  const probes=createProbes({request:gateway.request,backends:config.backends,buildPrompt:probeAdapter?.buildPrompt?.bind(probeAdapter)})
+  ctx.effect(()=>()=>{probes.close();return gateway.close()},'Provider gateway listener')
   const previews=new Map();let syncing=false
   const adapter={
     name:'本地模型网关',
@@ -70,7 +73,7 @@ export async function apply(ctx,config={}) {
         return {status:'completed',provider:route,count:preview.list.length,backup}
       }finally{syncing=false}
     },
-    async probe({backend,model}){if(!Object.hasOwn(config.backends,backend)||typeof model!=='string')throw Error('Choose backend and model');return gateway.probe(backend,model)},
+    async probe(input){return probes.run(input)},
   }
   ctx.provide('workbenchIntranet',adapter)
 }

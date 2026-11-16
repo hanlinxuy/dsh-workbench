@@ -1,6 +1,6 @@
 {
   "name": "dsh-workbench-provider-gateway",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -14,7 +14,8 @@
     "README.md",
     "LICENSE",
     "scheduler.js",
-    "pool.js"
+    "pool.js",
+    "probes.js"
   ],
   "dsh": {
     "bundle": {
