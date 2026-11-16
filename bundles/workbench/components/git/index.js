@@ -20,8 +20,10 @@ export async function apply(ctx, config = {}) {
       graceMs: 1000, signal, env: options.env })
     const outcome = await child.done
     const stdout = child.collected.stdout.readFrom(0)
-    if (outcome.exitCode !== 0 || signal.aborted || stdout.lossy) {
-      const error = new Error('Host subprocess failed or output exceeded limit')
+    const stderr = child.collected.stderr.readFrom(0)
+    if (outcome.exitCode !== 0 || signal.aborted || stdout.lossy || stderr.lossy) {
+      const detail=stderr.text.trim().slice(-2000).replace(/(https?:\/\/)[^\s/@]+@/gi,'$1***@').replace(/((?:token|password|authorization)\s*[:=]\s*)[^\s]+/gi,'$1***')
+      const error = new Error(signal.aborted?'Git subprocess cancelled or timed out':stdout.lossy||stderr.lossy?'Git subprocess output exceeded collection limit; full output was not captured':`Git subprocess failed (exit ${outcome.exitCode}): ${detail||'no diagnostic output'}`)
       error.code = outcome.exitCode
       throw error
     }

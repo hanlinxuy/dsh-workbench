@@ -51,6 +51,8 @@ export async function apply(ctx,config){
      value=await ctx.get('workbenchCredentials')[body.operation](body.ref,body.value)
     }else if(body.service==='storage')value=await ctx.get('workbenchStorage').change(body.operation,body.input)
     else throw Error('Unknown test service mutation')
+   }else if(body.action==='service-probe'){
+    value=await ctx.get('workbenchIntranet').probe(body.input)
    }else if(body.action==='service-status'){
     const name={credentials:'workbenchCredentials',storage:'workbenchStorage',gateway:'workbenchIntranet'}[body.service]
     if(!name)throw Error('Unknown status service')
