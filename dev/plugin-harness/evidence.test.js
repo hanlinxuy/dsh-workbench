@@ -8,3 +8,9 @@ test('L1 requires matching actual tool events and a completed turn, never an ass
  assert.throws(()=>assertModelEvidence(events.slice(0,2),{tool:'fixture'}),/completed turn/)
  assert.throws(()=>assertModelEvidence(events,{tool:'fixture',contains:'invented'}),/matching tool/)
 })
+test('Desktop 0.2.2 result events associate calls through message.toolCallId',()=>{
+ const events=[{seq:21,type:'tool/call',data:{turn:1,step:1,name:'fixture',callId:'a'}},{seq:22,type:'tool/result',data:{turn:1,step:1,message:{role:'tool',toolCallId:'a',source:{kind:'tool',callId:'a'},isError:false,content:[{type:'text',text:'spill:accepted'}]}}},{seq:46,type:'turn/end',data:{turn:1,reason:{kind:'completed'}}}]
+ assert.equal(assertModelEvidence(events,{tool:'fixture',contains:'spill:'}).matched,true)
+ events[1].data.message.isError=true
+ assert.throws(()=>assertModelEvidence(events,{tool:'fixture'}),/matching tool/)
+})
