@@ -55,3 +55,21 @@
 - 教训：实际 Desktop 运行时也需要验收，普通 Node 通过并不足够。
 - 复发: 1
 - 证据：ed374f8；hwstaff 官方 Desktop 0.2.2-rc.1 的 Node 24.21.0 复测。
+
+## M-7：JSON 转义换行绕过文本脱敏
+
+- 症状：原生知识工具返回的 JSON 正文中，测试 password 字段未被遮盖。
+- 根因：只对序列化后的文本使用词边界正则，转义换行中的 n 与 password 连在一起。
+- 修法：JSON 先解析，逐字符串及凭据字段脱敏，再编码；保留后续正文和合法结构。
+- 教训：脱敏测试同时覆盖纯文本和真实工具的结构化包装。
+- 复发: 1
+- 证据：d4fda1e；bundles/test/spill.test.js；原生 1.25 MB 全文回读。
+
+## M-8：验收器使用了替身事件的关联字段
+
+- 症状：真实工具调用成功，但 preflight 找不到匹配结果。
+- 根因：替身在 result.data 放 callId，Desktop 实际放在 message.toolCallId。
+- 修法：按原生消息形状关联，保留旧导出兼容；新增原生形状成功/失败用例。
+- 教训：以宿主原始事件做验收，不能仅拿自建事件证明解析器正确。
+- 复发: 1
+- 证据：16f7bad；dev/plugin-harness/evidence.test.js；最终原生 preflight PASS。
