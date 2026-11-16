@@ -165,10 +165,17 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
         const actual = await (await request(new URL(platform.apiBase.replace(/\/$/, '') + '/' + prefix + mrPath))).json()
         if (actual?.target_branch !== target_branch || !repo.mergeTargetBranches.includes(actual.target_branch)) throw new Error('Actual MR target branch does not match the allowlisted target_branch')
         if (actual.state !== 'opened' || actual.iid !== number || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(actual.sha ?? '')) throw new Error('MR must be opened with matching iid and a valid head SHA')
+        if(actual.merge_status!=='can_be_merged')throw Error('MR merge_status must be can_be_merged; refresh the MR after checks finish')
         // GitLab rejects a changed source head rather than merging unreviewed commits.
         payload = { sha: actual.sha }
       }
       const response = await request(url, action === 'mr_merge' ? 'PUT' : write ? 'POST' : 'GET', write ? payload : undefined)
+      if(action==='mr_merge'){
+        await response.body?.cancel()
+        const verified=await request(new URL(platform.apiBase.replace(/\/$/, '') + '/' + prefix + mrPath)).then(r=>r.json(),()=>{throw Error('outcome_unknown: merge submitted but readback failed; inspect the MR, do not replay')})
+        if(verified.state!=='merged'||verified.iid!==number)throw Error('outcome_unknown: merge submitted but merged state not verified; inspect the MR, do not replay')
+        return JSON.stringify({data:verified,verified:true})
+      }
       return JSON.stringify({ data: await response.json(), page, next: response.headers.get('x-next-page') || response.headers.get('link') || null })
     })
     const settled = pending.then(() => {}, () => {})

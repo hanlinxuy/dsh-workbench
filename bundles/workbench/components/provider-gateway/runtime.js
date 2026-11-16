@@ -22,7 +22,8 @@ export function createGateway({ config, credentials, fetchImpl = fetch, now = Da
     if (!Number.isFinite(rpm) || rpm <= 0) throw Error('requestsPerMinute must be positive')
     states.set(id,{token:null,expires:0,logging:null,models:null,modelsAt:0,next:0,rateQueue:Promise.resolve(),rpm})
   }
-  let server, closed=false
+  let server, closed=false, lastError
+  const instanceId=crypto.randomUUID()
   const lifetime = new AbortController()
   const getHeaders = async (id, signal, staleToken) => {
     const b=config.backends[id], s=states.get(id)
@@ -112,11 +113,11 @@ export function createGateway({ config, credentials, fetchImpl = fetch, now = Da
     if(response.status===401)headers.set('x-workbench-credential-hint',`${id}: update configured credential references in settings`)
     return new Response(response.body,{status:response.status,headers})
   }
-  return {handle,models,request,async probe(id,model,signal){const r=await request(id,'chat/completions',{body:{model,messages:[{role:'user',content:'Reply OK.'}],max_tokens:8,stream:false},signal});await r.body?.cancel();return {backend:id,model,ok:r.ok,status:r.status,contextWindow:'unknown',modalities:'not inferred from a text probe'}},
+  return {handle,models,request,status(){return {instanceId,pid:process.pid,port:config.port,listening:server?.listening===true && listeners.get(config.port)?.server===server,closed,error:lastError}},async probe(id,model,signal){const r=await request(id,'chat/completions',{body:{model,messages:[{role:'user',content:'Reply OK.'}],max_tokens:8,stream:false},signal});await r.body?.cancel();return {backend:id,model,ok:r.ok,status:r.status,contextWindow:'unknown',modalities:'not inferred from a text probe'}},
     async start(){
       if(closed)throw Error('Gateway is closed')
       if(server)return
-      if(listeners.has(config.port))throw Error(`Gateway port ${config.port} already owned by another instance`)
+      if(listeners.has(config.port)){lastError=`Gateway port ${config.port} already owned by another instance (pid ${listeners.get(config.port).pid}, instance ${listeners.get(config.port).instanceId})`;throw Error(lastError)}
       server=createServer((req,res)=>{
         const abort=new AbortController();res.once('close',()=>{if(!res.writableEnded)abort.abort()});req.once('aborted',()=>abort.abort())
         const serve=async()=>{
@@ -127,9 +128,9 @@ export function createGateway({ config, credentials, fetchImpl = fetch, now = Da
         }
         void serve().catch(()=>{if(abort.signal.aborted)logger.info({event:'cancelled'});if(!res.headersSent)res.writeHead(502,{'content-type':'application/json'});res.end(JSON.stringify({error:'Gateway request failed; inspect backend settings'}))})
       })
-      await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(config.port,'127.0.0.1',resolve)}).catch(error=>{server=undefined;throw Error(`Gateway port ${config.port}: ${error.code??'listen failed'}`)})
-      listeners.set(config.port,server)
+      await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(config.port,'127.0.0.1',resolve)}).catch(error=>{server=undefined;lastError=`Gateway port ${config.port}: ${error.code??'listen failed'}; this instance is not listening. Inspect the port owner with lsof -nP -iTCP:${config.port} (macOS/Linux) or Get-NetTCPConnection -LocalPort ${config.port} (PowerShell).`;throw Error(lastError)})
+      lastError=undefined;listeners.set(config.port,{server,pid:process.pid,instanceId})
     },
-    async close(){closed=true;lifetime.abort();for(const s of states.values()){s.token=null;s.expires=0}if(server){const owned=server;if(listeners.get(config.port)===owned)listeners.delete(config.port);await new Promise(resolve=>{owned.close(resolve);owned.closeAllConnections()});server=undefined}},
+    async close(){closed=true;lifetime.abort();for(const s of states.values()){s.token=null;s.expires=0}if(server){const owned=server;if(listeners.get(config.port)?.server===owned)listeners.delete(config.port);await new Promise(resolve=>{owned.close(resolve);owned.closeAllConnections()});server=undefined}},
   }
 }

@@ -339,6 +339,7 @@ module.exports = __toCommonJS(stdin_exports);
 // bundles/settings/gateway-client.js
 var import_react = require("react");
 function GatewayFields({ saved, draft, setDraft, editing, call }) {
+  const [preview, setPreview] = (0, import_react.useState)(null);
   const [result, setResult] = (0, import_react.useState)(""), [model, setModel] = (0, import_react.useState)(""), [backend, setBackend] = (0, import_react.useState)(saved.adapter.backends[0] ?? ""), [busy, setBusy] = (0, import_react.useState)(false);
   const fields = draft.gatewayHeaders ?? [];
   const update = (id, key, value) => setDraft({ ...draft, gatewayHeaders: fields.map((row) => row.id === id ? { ...row, [key]: value } : row) });
@@ -348,7 +349,7 @@ function GatewayFields({ saved, draft, setDraft, editing, call }) {
     "section",
     { style: { border: "1px solid #555", borderRadius: 14, padding: 20, marginTop: 12 } },
     (0, import_react.createElement)("strong", null, "\u6A21\u578B\u7F51\u5173"),
-    (0, import_react.createElement)("p", { style: { opacity: 0.65, fontSize: 13 } }, "\u5237\u65B0\u6A21\u578B\u5217\u8868\u53EF\u540C\u6B65\u5DF2\u914D\u7F6E\u7684 DSH provider\u3002\u81EA\u5B9A\u4E49\u5934\u968F\u201C\u4FDD\u5B58\u8FDE\u63A5\u201D\u751F\u6548\u3002"),
+    (0, import_react.createElement)("p", { style: { opacity: 0.65, fontSize: 13 } }, "\u5237\u65B0\u53EA\u8BFB\u53D6\u6A21\u578B\u5217\u8868\u3002\u540C\u6B65\u5230 DSH \u524D\u4F1A\u5148\u663E\u793A\u53D8\u66F4\u3002\u81EA\u5B9A\u4E49\u5934\u968F\u201C\u4FDD\u5B58\u8FDE\u63A5\u201D\u751F\u6548\u3002"),
     editing ? (0, import_react.createElement)(
       "div",
       null,
@@ -364,6 +365,16 @@ function GatewayFields({ saved, draft, setDraft, editing, call }) {
       )),
       button("\u6DFB\u52A0\u8BF7\u6C42\u5934", () => setDraft({ ...draft, gatewayHeaders: [...fields, { id: crypto.randomUUID(), backend: saved.adapter.backends[0], name: "", value: "", secret: true }] }))
     ) : (0, import_react.createElement)("div", null, ...(saved.gatewayHeaders ?? []).map((row) => (0, import_react.createElement)("p", { key: row.id, style: { fontSize: 13 } }, `${row.backend} \xB7 ${row.name} \xB7 ${row.secret ? row.valueSaved ? "\u5DF2\u4FDD\u5B58" : "\u5F85\u6E05\u7406" : row.value || "\u5F85\u6E05\u7406"}`)), ...saved.adapter.backends.filter((id) => saved.gatewayOverrides?.[id]).map((id) => (0, import_react.createElement)("p", { key: id, style: { color: "#ef9385" } }, `${id}\uFF1A\u5DF2\u8986\u76D6\u81EA\u52A8\u9274\u6743\uFF0C\u4E0D\u518D\u81EA\u52A8\u767B\u5F55`))),
+    !editing && (0, import_react.createElement)("div", null, button("\u9884\u89C8\u6A21\u578B\u540C\u6B65", () => {
+      setBusy(true);
+      void call("sync-models", {}).then(setPreview, (e) => setResult(e.message)).finally(() => setBusy(false));
+    }), preview && (0, import_react.createElement)("div", null, (0, import_react.createElement)("p", null, `${preview.provider}\uFF1A${preview.before.length} \u2192 ${preview.after.length} \u4E2A\u6A21\u578B`), (0, import_react.createElement)("p", null, preview.after.map((m) => m.id).join(" \xB7 ")), button("\u786E\u8BA4\u540C\u6B65", () => {
+      setBusy(true);
+      void call("sync-models", { previewId: preview.previewId, confirm: true }).then((r) => {
+        setPreview(null);
+        setResult(`\u5DF2\u540C\u6B65 ${r.count} \u4E2A\u6A21\u578B\uFF0C\u539F\u914D\u7F6E\u5DF2\u5907\u4EFD\u3002`);
+      }, (e) => setResult(e.message)).finally(() => setBusy(false));
+    }), button("\u53D6\u6D88", () => setPreview(null)))),
     !editing && (0, import_react.createElement)("details", null, (0, import_react.createElement)("summary", null, "\u624B\u52A8\u6D4B\u8BD5\u6A21\u578B\u8C03\u7528"), (0, import_react.createElement)("p", { style: { fontSize: 12, opacity: 0.65 } }, "\u53D1\u9001\u4E00\u6B21\u7B80\u77ED\u6587\u672C\u8BF7\u6C42\uFF0C\u4F1A\u6D88\u8017\u5C11\u91CF\u989D\u5EA6\uFF1B\u4E0D\u81EA\u52A8\u8FD0\u884C\uFF0C\u4E0D\u63A8\u65AD\u4E0A\u4E0B\u6587\u6216\u591A\u6A21\u6001\u4E0A\u9650\u3002"), (0, import_react.createElement)("select", { value: backend, style: inputStyle, onChange: (e) => setBackend(e.target.value) }, ...saved.adapter.backends.map((id) => (0, import_react.createElement)("option", { key: id, value: id }, id))), (0, import_react.createElement)("input", { "aria-label": "\u63A2\u6D4B\u6A21\u578B\u540D\u79F0", placeholder: "\u6A21\u578B\u540D\u79F0", value: model, style: inputStyle, onChange: (e) => setModel(e.target.value) }), button("\u53D1\u9001\u6D4B\u8BD5\u8BF7\u6C42", () => {
       setBusy(true);
       void call("probe", { backend, model }).then((r) => setResult(r.ok ? "\u8C03\u7528\u6210\u529F" : "\u8C03\u7528\u5931\u8D25\uFF1A" + r.status), (e) => setResult(e.message)).finally(() => setBusy(false));
@@ -524,6 +535,7 @@ function apply(ctx) {
           { style: card2 },
           (0, import_react3.createElement)("h3", null, "PowerShell 7"),
           (0, import_react3.createElement)("p", null, data.pwsh.message),
+          data.pwsh.bundled && button("\u4F7F\u7528\u968F\u5305 PowerShell 7", () => run("use-bundled-pwsh")),
           data.pwsh.state === "missing" && button("\u5B89\u88C5 PowerShell 7", () => run("install-pwsh")),
           data.installation.status !== "idle" && (0, import_react3.createElement)("p", { role: "status" }, data.installation.message),
           data.installation.output && (0, import_react3.createElement)("pre", { style: { whiteSpace: "pre-wrap" } }, data.installation.output)
