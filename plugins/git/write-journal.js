@@ -8,7 +8,7 @@ export function createWriteJournal(directory) {
  return async function execute(args,cwd,run){
   await mkdir(directory,{recursive:true,mode:0o700})
   const {confirm,authorization,...operation}=args
-  const fingerprint=createHash('sha256').update(JSON.stringify({cwd,operation})).digest('hex')
+  const fingerprint=createHash('sha256').update(JSON.stringify({cwd,operation},(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value)).digest('hex')
   const marker=join(directory,`${fingerprint}.pending.json`),started=Date.now()
   const metadata={action:args.action,repository:args.repository??'current',fingerprint}
   await writeFile(marker,JSON.stringify({...metadata,at:new Date().toISOString(),status:'outcome_unknown'}),{flag:'wx',mode:0o600}).catch(error=>{
@@ -21,6 +21,6 @@ export function createWriteJournal(directory) {
    const result=await run()
    await record('completed');await unlink(marker)
    return result
-  }catch(error){await record('outcome_unknown');throw error}
+  }catch(error){await record('outcome_unknown');throw Error(`outcome_unknown: ${error.message}; inspect the target before replaying journal ${fingerprint}`)}
  }
 }

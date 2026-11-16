@@ -9,7 +9,7 @@ test('uncertain writes remain blocked after restart and audit contains no payloa
  const args={action:'issue_create',repository:'test',body:'private-fixture-body',confirm:true}
  try{
   await assert.rejects(createWriteJournal(dir)(args,'/project',async()=>{calls++;throw Error('timeout with private-fixture-secret')}),/timeout/)
-  await assert.rejects(createWriteJournal(dir)(args,'/project',async()=>calls++),/outcome_unknown/)
+  await assert.rejects(createWriteJournal(dir)({body:args.body,repository:args.repository,action:args.action,confirm:false},'/project',async()=>calls++),/outcome_unknown/)
   assert.equal(calls,1)
   for(const file of await readdir(dir))assert.doesNotMatch(await readFile(join(dir,file),'utf8'),/private-fixture-body|private-fixture-secret/)
   await createWriteJournal(dir)(args,'/other-project',async()=>calls++)

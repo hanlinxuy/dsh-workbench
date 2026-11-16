@@ -59,3 +59,9 @@ Git prepare 的授权按具体插件说明处理；不要关闭所有构建限�
 保留上一版固定提交/包与状态备份，按 [安装和回滚](../../docs/installation.md) 操作。
 
 本地 tgz 验收包必须使用含提交号的唯一文件名。不要覆盖同一包名后仅以 pnpm 的成功提示判断版本；安装后对实际入口、客户端和新增文件进行 SHA256/字节比对，再启动宿主。
+
+## 原生宿主预检
+
+工具 schema 不能只靠 defineTool 替身测试。用目标宿主的实际 SDK 执行 `scripts/native-schema-preflight.mjs`，将 `DSH_TOOLS_MODULE` 指向目标 dsh-tools 的入口；Desktop 使用它自己的 Electron Node 运行时，并保留 `ELECTRON_RUN_AS_NODE=1`。所有测试还需显式指定任务专用 DSH_HOME，避免子进程意外使用默认 profile。
+
+`desktop-probe/index.js` 仅供隔离验收：必须有显式 ownership marker、DSH_HOME、固定回环端口和允许的项目目录。服务为每次启动生成独立 0600 令牌文件，不输出令牌；不能装入正式 profile，不随套装发布。它调用真实 sessionController/tools，可记录宿主加载、会话事件和实际工具结果，不能替代真实界面观察。
