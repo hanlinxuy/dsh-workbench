@@ -2,6 +2,12 @@ import {readFile,stat,readdir} from 'node:fs/promises'
 import {resolve,join} from 'node:path'
 import {fileURLToPath} from 'node:url'
 
+export function inspectToolBudget(name,description,actionCount=0){
+ if(description.length>1300)throw Error(`${name}: description ${description.length} > 1300`)
+ if(actionCount>15)throw Error(`${name}: ${actionCount} actions > 15; split into ${Math.ceil(actionCount/15)} or more tools by risk`)
+ return description.length
+}
+
 export async function inspectStructure(root=resolve(fileURLToPath(new URL('../../../',import.meta.url)))) {
  const results=[]
  for(const group of ['plugins','bundles'])for(const {name:dir} of (await readdir(join(root,group),{withFileTypes:true})).filter(entry=>entry.isDirectory())){

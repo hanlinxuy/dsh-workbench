@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {readFile,mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {inspectStructure} from './scripts/structure.mjs'
+import {inspectStructure,inspectToolBudget} from './scripts/structure.mjs'
 
 test('package exports and declared files exist; web frontend export cannot disappear',async()=>{
  assert.ok((await inspectStructure()).includes('dsh-workbench-suite'))
@@ -31,9 +31,11 @@ test('static tool descriptions remain within the Workbench budgets',async()=>{
   // must gain a registration-level budget test before changing this convention.
   const descriptions=[...text.matchAll(/description:\s*'((?:\\.|[^'\\])*)'/g)].map(m=>m[1])
   assert.ok(descriptions.length,`${plugin}: no literal tool description found`)
-  for(const description of descriptions){assert.ok(description.length<=1300,`${plugin}: description ${description.length} > 1300`);total+=description.length}
+  for(const description of descriptions)total+=inspectToolBudget(plugin,description)
+  for(const actions of text.matchAll(/actions:\s*\[([^\]]*)\]/g))inspectToolBudget(plugin,'',[...actions[1].matchAll(/'[^']+'/g)].length)
  }
  assert.ok(total<=8200,`Workbench descriptions ${total} > 8200`)
+ assert.throws(()=>inspectToolBudget('oversized','short description',16),/split into 2 or more tools by risk/)
 })
 test('documented recurring mistakes require an executable convention at recurrence three',async()=>{
  const text=await readFile(new URL('../../docs/engineering/mistakes.md',import.meta.url),'utf8')

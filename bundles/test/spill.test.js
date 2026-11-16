@@ -3,7 +3,15 @@ import assert from 'node:assert/strict'
 import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {createSpill} from '../settings/spill.js'
+import {createSpill,redactOutput} from '../settings/spill.js'
+test('JSON-wrapped multiline results redact secrets without losing following text or JSON structure',()=>{
+ const input={documents:[{body:'HEAD\npassword=fixture-password\nAuthorization: Bearer fixture-header\nTAIL',token:'fixture-token',sourceRef:'fixture://source'}]}
+ const output=redactOutput(JSON.stringify(input)),parsed=JSON.parse(output)
+ assert.doesNotMatch(output,/fixture-password|fixture-header|fixture-token/)
+ assert.equal(parsed.documents[0].body,'HEAD\npassword=***\nAuthorization: ***\nTAIL')
+ assert.equal(parsed.documents[0].sourceRef,'fixture://source')
+ assert.equal(redactOutput(output),output)
+})
 test('spill retains redacted full text with bounded head/tail, persistent paging, dedup and logged cleanup',async()=>{
  const directory=await mkdtemp(join(tmpdir(),'wb-spill-'));let saves=0,time=0;const logs=[]
  const store={saveText:async({content})=>{const locator=join(directory,`native-${++saves}.txt`);await writeFile(locator,content,{mode:0o600});return {locator,bytes:Buffer.byteLength(content)}}}
