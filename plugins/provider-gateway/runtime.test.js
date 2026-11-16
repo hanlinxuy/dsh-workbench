@@ -52,7 +52,7 @@ test('fixed loopback binding, port ownership and release',async()=>{
  assert.throws(()=>fixture({config:{...config,host:'0.0.0.0'}}),/127/)
  const occupied=createServer();await new Promise(r=>occupied.listen(0,'127.0.0.1',r));const port=occupied.address().port
  const g=fixture({config:{...config,port}});await assert.rejects(g.start(),new RegExp(String(port)));await g.close();await new Promise(r=>occupied.close(r))
- const first=fixture({config:{...config,port}}),second=fixture({config:{...config,port}});await first.start();await assert.rejects(second.start(),/owned/);await first.close();await second.start();await second.close()
+ const first=fixture({config:{...config,port}}),second=fixture({config:{...config,port}});await first.start();await assert.rejects(second.start(),/owned/);assert.equal(first.status().listening,true);assert.equal(second.status().listening,false);assert.match(second.status().error,/pid/);await second.close();assert.equal(first.status().listening,true);await first.close();assert.equal(first.status().listening,false)
 })
 test('Retry-After delays next request without retrying a completion',async()=>{
  let time=0,calls=0,waits=[];const g=fixture({now:()=>time,sleep:async ms=>{waits.push(ms);time+=ms},fetchImpl:async()=>{calls++;return new Response('{}',{status:429,headers:{'retry-after':'2'}})}})

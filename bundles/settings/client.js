@@ -36,6 +36,7 @@ export function apply(ctx) {
             confirm?h('div',null,h('p',null,'只处理当前 DSH。请在任务结束后执行；若宿主要求重启，页面会明确提示。'),button('确认迁移',()=>run('migrate'))):button('查看并迁移',()=>setConfirm(true)))
           :h('p',null,'组件登记正常，无需迁移。')),
         h('div',{style:card},h('h3',null,'PowerShell 7'),h('p',null,data.pwsh.message),
+          data.pwsh.bundled&&button('使用随包 PowerShell 7',()=>run('use-bundled-pwsh')),
           data.pwsh.state==='missing'&&button('安装 PowerShell 7',()=>run('install-pwsh')),
           data.installation.status!=='idle'&&h('p',{role:'status'},data.installation.message),data.installation.output&&h('pre',{style:{whiteSpace:'pre-wrap'}},data.installation.output)),
         h('div',{style:{marginTop:16}},button('重新检测',refresh))))

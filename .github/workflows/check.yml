@@ -31,3 +31,14 @@ jobs:
         with:
           node-version: 24
       - run: node --test plugins/chief/*.test.js plugins/git/*.test.js plugins/provider-gateway/*.test.js
+
+  powershell-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: node --test bundles/test/powershell.test.js

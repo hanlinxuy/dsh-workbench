@@ -29,6 +29,10 @@ importers:
       yaml:
         specifier: 2.9.1
         version: 2.9.1
+    optionalDependencies:
+      '@dsh-ops/pwsh-win32-x64':
+        specifier: 0.2.1
+        version: 0.2.1
 
   bundles/workbench:
     dependencies:
@@ -50,6 +54,10 @@ importers:
       yaml:
         specifier: 2.9.1
         version: 2.9.1
+    optionalDependencies:
+      '@dsh-ops/pwsh-win32-x64':
+        specifier: 0.2.1
+        version: 0.2.1
 
   plugins/browser:
     dependencies:
@@ -74,6 +82,11 @@ importers:
   plugins/provider-gateway: {}
 
 packages:
+
+  '@dsh-ops/pwsh-win32-x64@0.2.1':
+    resolution: {integrity: sha512-vEB3LccHpl73Buq0ErfDTEMRfwgWNJDRy3agZBNSQwaAv028zMO79pEGPgFVEjjboLoUyOG2+NunMKm4Gszq8w==}
+    cpu: [x64]
+    os: [win32]
 
   '@esbuild/aix-ppc64@0.28.2':
     resolution: {integrity: sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==}
@@ -305,6 +318,9 @@ packages:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
 snapshots:
+
+  '@dsh-ops/pwsh-win32-x64@0.2.1':
+    optional: true
 
   '@esbuild/aix-ppc64@0.28.2':
     optional: true

@@ -8,12 +8,12 @@ const config = (platform = {}, repo = {}) => ({
   repositories: { fixture: { path: tmpdir(), platform: 'lab', apiRepo: 'group/sub/repo', ...repo } },
 })
 const args = (action, extra = {}) => ({ action, repository: 'fixture', ...extra })
-const opened = { iid: 7, target_branch: 'main', state: 'opened', sha: 'a'.repeat(40) }
+const opened = { iid: 7, target_branch: 'main', state: 'opened', merge_status:'can_be_merged', sha: 'a'.repeat(40) }
 function mock(t, data = opened) {
   const sent = []
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     sent.push({ url: String(url), method: options.method, body: options.body && JSON.parse(options.body), redirect: options.redirect })
-    return new Response(JSON.stringify(data), { status: 200, headers: { 'x-next-page': '3' } })
+    return new Response(JSON.stringify(sent.some(r=>r.method==='PUT')?{...data,state:'merged'}:data), { status: 200, headers: { 'x-next-page': '3' } })
   })
   return sent
 }
@@ -78,7 +78,8 @@ test('merge checks actual MR branch and pins source SHA in PUT merge', async t =
   const sent = mock(t)
   const run = createGit(config({ apiWrites: ['mr_merge'] }, { mergeTargetBranches: ['main'] }))
   await run(args('mr_merge', { number: 7, target_branch: 'main' }))
-  assert.equal(sent.length, 2)
+  assert.equal(sent.length, 3)
+  assert.equal(sent[2].method,'GET')
   assert.ok(sent[0].url.endsWith('/merge_requests/7'))
   assert.equal(sent[0].method, 'GET')
   assert.ok(sent[1].url.endsWith('/merge_requests/7/merge'))
@@ -147,4 +148,18 @@ test('merge preflight errors and ambiguous write failures never retry', async t 
   })
   await assert.rejects(run(args('mr_merge', { number: 7, target_branch: 'main' })), /ambiguous timeout/)
   assert.equal(calls, 3)
+})
+
+for(const merge_status of ['unchecked','checking','cannot_be_merged',undefined])test(`merge denies ${merge_status} without mutation`,async t=>{
+ const sent=mock(t,{...opened,merge_status})
+ const run=createGit(config({apiWrites:['mr_merge']},{mergeTargetBranches:['main']}))
+ await assert.rejects(run(args('mr_merge',{number:7,target_branch:'main'})),/merge_status/)
+ assert.deepEqual(sent.map(r=>r.method),['GET'])
+})
+test('a successful PUT without merged readback is outcome_unknown, never retried',async t=>{
+ const methods=[]
+ t.mock.method(globalThis,'fetch',async(_,o)=>{methods.push(o.method);return new Response(JSON.stringify(opened))})
+ const run=createGit(config({apiWrites:['mr_merge']},{mergeTargetBranches:['main']}))
+ await assert.rejects(run(args('mr_merge',{number:7,target_branch:'main'})),/outcome_unknown/)
+ assert.deepEqual(methods,['GET','PUT','GET'])
 })

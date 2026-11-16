@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path'
 import { withFileLock } from '@deepseek-ai/dsh-atomic-write'
-import { inspectPowerShell, installPowerShell } from './powershell.js'
+import { inspectPowerShell, installPowerShell, bundledPowerShell, useBundledPowerShell } from './powershell.js'
 import { createIntranetSettings, demoIntranetAdapter } from './intranet.js'
 import { migrate } from '../cli/migrate.mjs'
 
@@ -12,7 +12,7 @@ export function apply(ctx, config = {}) {
   ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-intranet',methods:['POST'],requestBody:'buffered',async fetch(request){
     try {
       const body=await request.json()
-      if(!['status','save','test','models','probe'].includes(body.action))throw Error('未知操作。')
+      if(!['status','save','test','models','probe','sync-models'].includes(body.action))throw Error('未知操作。')
       return Response.json({ok:true,value:await intranet(body.action,body.input)})
     }catch(error){return Response.json({ok:false,error:{message:error.message}})}
   }}),'Workbench intranet settings')
@@ -25,12 +25,17 @@ export function apply(ctx, config = {}) {
     const result = await child.done
     return {...result, stdout:child.collected.stdout.readFrom(0).text, stderr:child.collected.stderr.readFrom(0).text}
   }
-  const pwsh = () => inspectPowerShell(exec, process.platform)
-  const status = async () => ({migration:await migrate(profile),pwsh:await pwsh(),busy,installation,lastMigration})
+  const pwsh = () => {
+    // Inspect the native executor's chosen path, not a second PATH-only resolver.
+    const shell=ctx.get('shell')
+    const configured=shell?.config?.pwshPath?.get()
+    return inspectPowerShell(exec,process.platform,{executable:shell?.pwshPath??'pwsh',source:configured?'configured':shell?.pwshPath?'host':'PATH'})
+  }
+  const status = async () => ({migration:await migrate(profile),pwsh:{...await pwsh(),bundled:await bundledPowerShell({enabled:config.bundledPwsh!==false})},busy,installation,lastMigration})
   ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-settings',methods:['POST'],requestBody:'buffered',async fetch(request){
     try {
       const {action}=await request.json()
-      if(!['status','migrate','install-pwsh'].includes(action))throw new Error('Unknown Workbench settings action')
+      if(!['status','migrate','install-pwsh','use-bundled-pwsh'].includes(action))throw new Error('Unknown Workbench settings action')
       if(action==='status')return Response.json({ok:true,value:await status()})
       if(busy)throw new Error('Workbench 正在处理另一个操作，请稍候。')
       if((await ctx.sessionController.list({})).items.some(session=>session.running))throw new Error('有任务正在运行。请等任务完成后再操作；配置尚未修改。')
@@ -51,6 +56,7 @@ export function apply(ctx, config = {}) {
           return Response.json({ok:true,value:result})
         }finally{busy=false}
       }
+      if(action==='use-bundled-pwsh')return Response.json({ok:true,value:await useBundledPowerShell(ctx.configEditor,exec,await bundledPowerShell({enabled:config.bundledPwsh!==false}))})
       const info=await pwsh()
       if(info.state!=='missing')throw new Error(info.message)
       busy=true;installation={status:'running',message:'正在安装 PowerShell 7，请留意系统安装器提示。'}
