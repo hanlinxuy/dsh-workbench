@@ -61,3 +61,40 @@ test('open rejects script and non-HTTP navigation before launching AB', async ()
  try{await run({action:'version'});assert.equal(calls[0].env.WORKBENCH_TEST_SECRET,undefined);assert.ok(calls[0].env.PATH);}
  finally{delete process.env.WORKBENCH_TEST_SECRET;await rm(home,{recursive:true,force:true})}
  })
+
+test('site routing owns identity and isolates same-account profiles by site',async()=>{
+ const home=await mkdtemp(join(tmpdir(),'wb-sites-'));const calls=[]
+ const run=createBrowser({home,accounts:{primary:{}},sites:{a:{account:'primary',allowedHosts:['a.invalid']},b:{account:'primary',allowedHosts:['b.invalid']}}},async(file,args,options)=>{calls.push({args,cwd:options.cwd});return {stdout:'{"success":true,"data":{"url":"https://a.invalid"}}',stderr:''}})
+ try{
+  await assert.rejects(run({action:'open',site:'missing',target:'https://a.invalid'}),/Unknown site/)
+  await assert.rejects(run({action:'open',site:'a',account:'other',target:'https://a.invalid'}),/cannot switch/)
+  await assert.rejects(run({action:'open',site:'a',target:'https://b.invalid'}),/host_mismatch/)
+  assert.equal(calls.length,0)
+  await run({action:'open',site:'a',target:'https://a.invalid'})
+  await run({action:'open',site:'b',target:'https://b.invalid'})
+  assert.notEqual(calls[0].cwd,calls[1].cwd)
+  await assert.rejects(run({action:'snapshot',site:'b'}),/host_mismatch/)
+  assert.equal(calls.length,3,'only URL identity guard runs for mismatched page')
+ }finally{await rm(home,{recursive:true,force:true})}
+})
+
+test('capture filters the cookie jar and restore uses bound site/account without returning secrets',async()=>{
+ const home=await mkdtemp(join(tmpdir(),'wb-cookies-'));let stored,sets=0
+ const cookie=(domain,value,expires=-1)=>({domain,name:'session',value,expires,path:'/',secure:true,httpOnly:true,sameSite:'Lax'})
+ const run=createBrowser({home,accounts:{primary:{}},sites:{portal:{account:'primary',allowedHosts:['portal.example.invalid'],cookieRef:'PORTAL_PRIMARY_COOKIES'}},credentials:{set:async(ref,value)=>{assert.equal(ref,'PORTAL_PRIMARY_COOKIES');stored=value},resolve:async()=>({value:stored})}},async(file,args)=>{
+  if(args.includes('cookies')&&args.includes('get'))return {stdout:JSON.stringify({success:true,data:{cookies:[cookie('.example.invalid','private-cookie'),cookie('other.invalid','wrong-cookie'),cookie('portal.example.invalid','expired-cookie',1)]}})}
+  if(args.includes('set')){sets++;assert.ok(args.includes('private-cookie'));return {stdout:'{"success":true}'}}
+  return {stdout:'{"success":true,"data":{"url":"https://portal.example.invalid/home"}}'}
+ })
+ try{
+  const captured=await run({action:'capture',site:'portal'})
+  assert.doesNotMatch(captured,/private-cookie|wrong-cookie|expired-cookie/)
+  assert.equal(JSON.parse(captured).kept,1);assert.equal(JSON.parse(captured).dropped,2)
+  assert.doesNotMatch(stored,/wrong-cookie|expired-cookie/)
+  const restored=await run({action:'restore',site:'portal'});assert.equal(sets,1);assert.doesNotMatch(restored,/private-cookie/)
+  stored=JSON.stringify({...JSON.parse(stored),site:'other'})
+  await assert.rejects(run({action:'restore',site:'portal'}),/captured_for_other_site/);assert.equal(sets,1)
+  stored=JSON.stringify({site:'portal',account:'primary',cookies:[cookie('portal.example.invalid','expired',1)]})
+  await assert.rejects(run({action:'restore',site:'portal'}),/expired/);assert.equal(sets,1)
+ }finally{await rm(home,{recursive:true,force:true})}
+})

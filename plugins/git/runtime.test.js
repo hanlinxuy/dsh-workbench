@@ -5,7 +5,8 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { execFileSync } from 'node:child_process'
-import { createGit, remoteHost } from './runtime.js'
+import { createGit as nativeCreateGit, remoteHost } from './runtime.js'
+const createGit=(...args)=>nativeCreateGit(args[0],args[1],args[2],undefined,async()=>({testApproval:true}))
 
 test('Git local writes, configured internal push, external denial and changed remote', async () => {
   const home = await mkdtemp(join(tmpdir(), 'wb-git-test-'))
@@ -19,32 +20,32 @@ test('Git local writes, configured internal push, external denial and changed re
     const config = { platforms: { internal: { kind: 'git', network: 'internal', hosts: ['local'] }, outside: { kind: 'git', network: 'external', hosts: ['local'] } }, repositories: { project: { path: repo, localWrite: true, remotes: { origin: { platform: 'internal', url: remote, push: true, fetch: true } } }, readonly: { path: repo } } }
     let run = createGit(config)
     await writeFile(join(repo, 'file.txt'), 'verified\n')
-    await assert.rejects(run({ action: 'stage', repository: 'readonly', paths: ['file.txt'] }), /Local writes/)
-    await run({ action: 'stage', repository: 'project', paths: ['file.txt'] })
-    await run({ action: 'commit', repository: 'project', message: 'Fixture commit' })
-    await run({ action: 'push', repository: 'project', branch: 'main' })
+    await assert.rejects(run({ confirm:true, action: 'stage', repository: 'readonly', paths: ['file.txt'] }), /Local writes/)
+    await run({ confirm:true, action: 'stage', repository: 'project', paths: ['file.txt'] })
+    await run({ confirm:true, action: 'commit', repository: 'project', message: 'Fixture commit' })
+    await run({ confirm:true, action: 'push', repository: 'project', branch: 'main' })
     assert.equal(execFileSync('git', ['--git-dir', remote, 'rev-parse', 'refs/heads/main'], { encoding: 'utf8' }), git('rev-parse', 'HEAD'))
     const actual = await run({ action: 'remote_head', repository: 'project', branch: 'main' })
     assert.ok(actual.startsWith(git('rev-parse', 'HEAD').trim() + '\t'))
     git('branch', 'before-change')
     await writeFile(join(repo, 'file.txt'), 'second\n')
     git('add', 'file.txt'); git('commit', '-m', 'Second commit')
-    await run({action:'push',repository:'project',branch:'before-change'})
+    await run({confirm:true,action:'push',repository:'project',branch:'before-change'})
     assert.equal(execFileSync('git',['--git-dir',remote,'rev-parse','refs/heads/before-change'],{encoding:'utf8'}),git('rev-parse','before-change'))
     assert.notEqual(git('rev-parse','before-change'),git('rev-parse','HEAD'))
     assert.doesNotMatch(await run({ action: 'log', repository: 'project', branch: 'before-change' }), /Second commit/)
     assert.match(await run({ action: 'log', repository: 'project' }), /Second commit/)
     await assert.rejects(run({ action: 'log', repository: 'project', branch: '--all' }), /Valid branch/)
-    await run({ action: 'fetch', repository: 'project' })
+    await run({ confirm:true, action: 'fetch', repository: 'project' })
     assert.match(await run({ action: 'log', repository: 'project' }), /Fixture commit/)
     config.repositories.project.remotes.origin.platform = 'outside'
     run = createGit(config)
-    await assert.rejects(run({ action: 'push', repository: 'project', branch: 'main' }), /Push is disabled/)
+    await assert.rejects(run({ confirm:true, action: 'push', repository: 'project', branch: 'main' }), /Push is disabled/)
     config.repositories.project.remotes.origin.platform = 'internal'
     run = createGit(config)
     git('remote', 'set-url', 'origin', join(home, 'other.git'))
-    await assert.rejects(run({ action: 'fetch', repository: 'project' }), /Remote URL changed/)
-    await assert.rejects(run({ action: 'stage', repository: 'project', paths: ['../secret'] }), /literal file paths/)
+    await assert.rejects(run({ confirm:true, action: 'fetch', repository: 'project' }), /Remote URL changed/)
+    await assert.rejects(run({ confirm:true, action: 'stage', repository: 'project', paths: ['../secret'] }), /literal file paths/)
   } finally { await rm(home, { recursive: true, force: true }) }
 })
 

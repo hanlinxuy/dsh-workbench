@@ -6,7 +6,7 @@ Community plugins and practical guides for DeepSeek Harness. Not an official Dee
 
 ## 一次安装
 
-推荐 [Workbench 套装](docs/workbench-suite.md)：Chief、Browser、Desktop、受限 Git，以及 X Memory、Context、OPS 默认组件一起安装，ChatGPT 安装但默认关闭。在 DSH「添加插件」粘贴：
+推荐 [Workbench 套装](docs/workbench-suite.md)：Chief、Browser、Desktop、受限 Git，以及 X Memory、Context 一起安装，ChatGPT 安装但默认关闭。OPS 不再依赖；PowerShell 7 由环境设置管理。在 DSH「添加插件」粘贴：
 
 ```text
 git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench
@@ -19,10 +19,11 @@ git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench
 | 插件 | 能力 | 状态 |
 | --- | --- | --- |
 | [ChatGPT provider](docs/chatgpt-provider.md) | ChatGPT 官方授权、DSH 模型提供方 | 上游 submodule，0.1.18 |
-| [Desktop](plugins/desktop/README.md) | 固定 agent-desktop release、原生应用观察与操作 | 可选原型，0.1.0 |
-| [Git](plugins/git/README.md) | 多平台/remote 配置、独立写权限、外网 issue/comment 限定 | 可选原型，0.1.1 |
-| [Browser](plugins/browser/README.md) | 固定 AB release、网页操作、独立登录资料与账号切换 | 原型，0.1.0 |
-| [Chief](plugins/chief/README.md) | 自然语言项目调度、持久化记忆、任务验收、人工接手、项目看板 | 原型，0.3.5 |
+| [Desktop](plugins/desktop/README.md) | 固定 agent-desktop release、原生应用观察与操作 | 可选，0.1.3 |
+| [Git](plugins/git/README.md) | 多平台/remote、分级写权限、逐次外发审批与持久审计 | 可选，0.2.7 |
+| [Browser](plugins/browser/README.md) | 固定 AB release、站点账号、可选知识与视觉旁路 | 可选，0.1.5 |
+| [Chief](plugins/chief/README.md) | 项目调度、记忆、任务验收、人工接手、项目看板 | 0.3.7 |
+| [Provider gateway](plugins/provider-gateway/README.md) | 内网模型路由、探测、排队与受控同步 | 默认关闭，0.1.4 |
 
 Chief 独立运行在 DSH 内，不依赖 Pi Durable 或 DS-Bot。模型与登录由 DSH 提供。
 `plugins/chief` 是 Chief 的唯一维护目录，后续开发、修复与发布均在本仓库进行。
@@ -42,7 +43,7 @@ pnpm check
 pnpm pack:chief
 ```
 
-再按 [安装与升级](docs/installation.md) 将 `dist/independent-chief-0.3.5.tgz` 安装到目标 DSH profile。
+再按 [安装与升级](docs/installation.md) 将 `dist/` 中生成的包安装到目标 DSH profile。
 `main` 根目录是源码集合；`release/core` 与 `release/workbench` 的根目录才是可安装套装，不再依赖 `&path:`。
 
 ## 文档
@@ -50,6 +51,7 @@ pnpm pack:chief
 - [安装、升级与回滚](docs/installation.md)
 - [Chief 使用说明](plugins/chief/README.md)
 - [两项目验收步骤](docs/acceptance.md)
+- [0.2.8 机制索引与远端 Desktop 验收](docs/issue-sweep-0.2.8.md)
 - [ChatGPT 套餐 provider](docs/chatgpt-provider.md)（上游插件安装与验收）
 
 ## 开发流程
@@ -60,8 +62,8 @@ pnpm pack:chief
 ## 开发与兼容性
 
 代码采用 MIT；第三方宿主和依赖遵循各自许可证。仓库包含自建插件、第三方插件 submodule 和通用文档。
-Chief 适配过 DSH `0.2.1-rc.5` 的本机 Web profile，DSH 的插件接口仍可能变化。
-Windows 和原生 Desktop 未在本公开版本做端到端验证；不保证任意版本可用。
+本版在 DSH Desktop `0.2.2-rc.1` 的远端 Mac 独立 profile 完成真实模型与 GUI 验收。DSH 插件接口仍可能变化，升级宿主须重新验证。
+Windows 有 CI 与随包 PowerShell 实际执行验证；公司受限 Windows Desktop 的完整现场验收仍未覆盖。
 
 提交前运行 `pnpm test` 和 `pnpm check`。不要提交凭据、个人会话、运行时记忆或内网资料。
 

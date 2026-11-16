@@ -96,3 +96,23 @@ pnpm pack:browser
 `test/host-probe` 是仅用于隔离 profile 的测试插件：与 Chief、Browser 一起安装后，检查项目工具可见、Chief 限制及真正的宿主工具派发。
 它会创建测试会话并输出 `$DSH_HOME/browser-host-probe.json`；不要安装到正式环境。
 详见 [验收记录](../../docs/browser-acceptance.md)。
+
+## 按站点固定账号（可选）
+
+操作员配置后，工具使用 `site`；模型不能通过 `account` 参数改变该站点的身份。
+
+```yaml
+config:
+  accounts:
+    primary: {}
+    secondary: {}
+  sites:
+    portal:
+      account: primary
+      allowedHosts: [portal.example.invalid]
+      cookieRef: PORTAL_PRIMARY_COOKIES
+```
+
+每个 site/account 使用单独的 AB profile；不是个人浏览器默认 profile。首次登录在这个专属窗口完成。`capture(site)` 先核对当前页面 host，再逐条过滤 cookie 域和过期时间，保存到宿主凭据库；返回仅含站点、账号、数量和时间。`restore(site)` 必须匹配捕获时的 site/account，不输出 cookie；没有有效 cookie 时要求重新登录。恢复 cookie 不代表业务登录一定有效，仍需站点身份回读；遇到 401 或登录跳转重新登录。
+
+allowedHosts 是配置，不是工具参数。SSO 跳转需由管理员明确列出允许的身份站点。配置变更需要重新加载 Browser 插件，凭据每次重新读取。未配置 sites 的既有普通浏览模式保留；站点路由不是对整个浏览器的网络防火墙，不能保证页面脚本不会自行访问其他域。

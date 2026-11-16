@@ -13,7 +13,10 @@ export function apply(ctx, config = {}) {
     description: 'Operate native desktop apps with agent-desktop. Actions: version/status/permissions/guide/apps; windows/snapshot(app); get(ref, optional property); click/check/uncheck(ref); fill/type/select(ref,value); press(app,value key combo). Observe current refs and verify effects. Web tasks use workbench_browser. OS desktop is shared even with isolated DSH profiles.',
     parameters: { action: { type: 'string', required: true }, app: { type: 'string' }, ref: { type: 'string' }, value: { type: 'string' }, property: { type: 'string' } },
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
-    execute: (args, exec) => run(args, { signal: exec.signal, scope: exec.agent?.id }),
+    execute: async(args, exec) => {
+      const value=await run(args, { signal: exec.signal, scope: exec.agent?.id }).catch(async error=>{throw Error(await (ctx.get?.('workbenchOutput')?.bound(error.message,exec,'workbench_desktop')??error.message))})
+      return ctx.get?.('workbenchOutput')?.bound(value,exec,'workbench_desktop')??value
+    },
   }))
   ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-desktop', order: 410, interpolate: false, text: instructions }), 'Desktop usage')
 }

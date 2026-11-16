@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { readFile, copyFile } from 'node:fs/promises'
+import {createProbes} from './probes.js'
 import { createGateway } from './runtime.js'
 
 export const name='workbench-provider-gateway'
@@ -27,32 +29,51 @@ export async function apply(ctx,config={}) {
   })
   const gateway=createGateway({config,credentials,login,pool:ctx.get('workbenchGatewayPool')})
   await gateway.start()
-  ctx.effect(()=>()=>gateway.close(),'Provider gateway listener')
+  const probeAdapter=ctx.get('workbenchGatewayProbe')
+  const probes=createProbes({request:gateway.request,backends:config.backends,buildPrompt:probeAdapter?.buildPrompt?.bind(probeAdapter)})
+  ctx.effect(()=>()=>{probes.close();return gateway.close()},'Provider gateway listener')
+  const previews=new Map();let syncing=false
   const adapter={
     name:'本地模型网关',
+    status:()=>gateway.status(),
     backends:Object.keys(config.backends),
     async test(){const results=await Promise.all(Object.keys(config.backends).map(async id=>{const r=await gateway.request(id,'models');await r.body?.cancel();return r.ok}));return {connected:results.every(Boolean)}},
-    async models(){
-      const found=await gateway.models()
-      // Use the same host editor as native model settings: only our configured
-      // provider route is changed, never rewrite YAML or touch other profiles.
-      if(config.providerEntryId && config.providerRoute){
-        const row=ctx.configEditor.configuration().find(({entry})=>entry.options.id===config.providerEntryId)
-        if(!row)throw Error('Configured provider entry not found')
-        const route=config.providerRoute, existing={...row.inherited.providers,...row.override.providers}[route]
-        if(!existing)throw Error('Configure the target provider route before syncing')
-        const expected=`http://127.0.0.1:${config.port}/${config.providerBackend?config.providerBackend+'/':''}v1`
-        if(existing.baseURL?.replace(/\/$/,'')!==expected)throw Error('Provider baseURL does not match this gateway')
+    async models(){return (await gateway.models()).map(m=>({id:m.id,name:`${m.backend} · ${m.id}`}))},
+    async syncModels({previewId,confirm=false}={}){
+      if(syncing)throw Error('Model sync already running; preview again after it completes')
+      if(!config.providerEntryId || !config.providerRoute)throw Error('Configure providerEntryId and providerRoute before syncing')
+      const row=ctx.configEditor.configuration().find(({entry})=>entry.options.id===config.providerEntryId)
+      if(!row)throw Error('Create the target provider in DSH model settings before syncing')
+      const route=config.providerRoute, existing={...row.inherited.providers,...row.override.providers}[route]
+      if(!existing)throw Error('Create the target provider route in DSH model settings before syncing')
+      const expected=`http://127.0.0.1:${config.port}/${config.providerBackend?config.providerBackend+'/':''}v1`
+      if(existing.baseURL?.replace(/\/$/,'')!==expected)throw Error('Provider baseURL does not match this gateway')
+      if(!confirm){
+        const found=await gateway.models()
         const list=found.filter(m=>!config.providerBackend || m.backend===config.providerBackend).map(({id})=>({id}))
         if(new Set(list.map(m=>m.id)).size!==list.length)throw Error('Duplicate model names: select providerBackend')
-        await copyFile(ctx.configEditor.documentPath,ctx.configEditor.documentPath+`.bak-${Date.now()}`)
-        await ctx.configEditor.edit(row.entry,(current,inherited)=>({...current,providers:{...current.providers,[route]:{...inherited.providers?.[route],...current.providers?.[route],models:list}}}))
-        const updated=ctx.configEditor.configuration().find(({entry})=>entry.options.id===config.providerEntryId)
-        if(JSON.stringify(updated?.override.providers?.[route]?.models)!==JSON.stringify(list))throw Error('Provider readback differs after sync; inspect backup')
+        const id=randomUUID()
+        previews.clear();previews.set(id,{list,before:JSON.stringify(existing),expires:Date.now()+300000})
+        return {previewId:id,provider:route,before:existing.models??[],after:list,expiresInSeconds:300,changed:JSON.stringify(existing.models??[])!==JSON.stringify(list)}
       }
-      return found.map(m=>({id:m.id,name:`${m.backend} · ${m.id}`}))
+      const preview=previews.get(previewId)
+      if(!preview || preview.expires<Date.now())throw Error('Preview expired; preview model changes again')
+      if(JSON.stringify(existing)!==preview.before)throw Error('Provider changed since preview; preview again')
+      previews.delete(previewId);syncing=true
+      const backup=ctx.configEditor.documentPath+`.bak-${Date.now()}-${randomUUID()}`
+      try{
+        await copyFile(ctx.configEditor.documentPath,backup)
+        await ctx.configEditor.edit(row.entry,(current,inherited)=>{
+          const target={...inherited.providers,...current.providers}[route]
+          if(JSON.stringify(target)!==preview.before)throw Error('Provider changed since preview; preview again')
+          return {...current,providers:{...current.providers,[route]:{...target,models:preview.list}}}
+        })
+        const updated=ctx.configEditor.configuration().find(({entry})=>entry.options.id===config.providerEntryId)
+        if(JSON.stringify(updated?.override.providers?.[route]?.models)!==JSON.stringify(preview.list))throw Error('Provider readback differs after sync; inspect backup')
+        return {status:'completed',provider:route,count:preview.list.length,backup}
+      }finally{syncing=false}
     },
-    async probe({backend,model}){if(!Object.hasOwn(config.backends,backend)||typeof model!=='string')throw Error('Choose backend and model');return gateway.probe(backend,model)},
+    async probe(input){return probes.run(input)},
   }
   ctx.provide('workbenchIntranet',adapter)
 }

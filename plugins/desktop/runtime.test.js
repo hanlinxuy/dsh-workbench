@@ -21,3 +21,14 @@ test('pinned native release and explicit command boundary', async () => {
  try{await run({action:'type',ref:'@snapshot:e1',value:'-5'});assert.equal(calls[0].env.WORKBENCH_TEST_SECRET,undefined);assert.ok(calls[0].env.PATH);assert.deepEqual(calls[0].args.slice(-4),['type','@snapshot:e1','--','-5']);}
  finally{delete process.env.WORKBENCH_TEST_SECRET;await rm(home,{recursive:true,force:true})}
  })
+
+test('rejects bare refs before dispatch and preserves upstream stale/lock errors',async()=>{
+ const home=await mkdtemp(join(tmpdir(),'wb-ref-'));let calls=0
+ const run=createDesktop({home},async()=>{calls++;return {stdout:JSON.stringify({ok:false,error:{code:'stale_ref',message:'refresh snapshot',screenLocked:'unknown'}})}})
+ try {
+  for(const ref of ['@e1','e1','@other:eNaN'])await assert.rejects(run({action:'click',ref}),/invalid_ref/)
+  assert.equal(calls,0)
+  await assert.rejects(run({action:'click',ref:'@snapshot:e1'}),/stale_ref/)
+  assert.equal(calls,1)
+ }finally{await rm(home,{recursive:true,force:true})}
+})

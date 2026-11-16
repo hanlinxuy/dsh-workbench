@@ -28,6 +28,7 @@ export function createDesktop({ home, headed = false }, execute = exec) {
     for (const arg of [app, ref, property]) {
       if (arg !== undefined && (typeof arg !== 'string' || arg.startsWith('-'))) throw new Error('Arguments must be text, not CLI options')
     }
+    if (ref !== undefined && !/^@[A-Za-z0-9_-]+:e[0-9]+$/.test(ref)) throw new Error('invalid_ref: use the complete @snapshot:eN ref from a fresh snapshot; bare or guessed refs are not accepted')
     if (value !== undefined && typeof value !== 'string') throw new Error('Desktop value must be text')
     if(action==='press' && value?.startsWith('-')) throw new Error('Key combination cannot be a CLI option')
     const args = commands[action]()

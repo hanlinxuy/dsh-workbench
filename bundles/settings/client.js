@@ -1,3 +1,4 @@
+import {CredentialCatalogPanel} from './catalog-client.js'
 import { IntranetPanel } from './intranet-client.js'
 import { createElement as h, useEffect, useState } from 'react'
 export function apply(ctx) {
@@ -36,10 +37,12 @@ export function apply(ctx) {
             confirm?h('div',null,h('p',null,'只处理当前 DSH。请在任务结束后执行；若宿主要求重启，页面会明确提示。'),button('确认迁移',()=>run('migrate'))):button('查看并迁移',()=>setConfirm(true)))
           :h('p',null,'组件登记正常，无需迁移。')),
         h('div',{style:card},h('h3',null,'PowerShell 7'),h('p',null,data.pwsh.message),
+          data.pwsh.bundled&&button('使用随包 PowerShell 7',()=>run('use-bundled-pwsh')),
           data.pwsh.state==='missing'&&button('安装 PowerShell 7',()=>run('install-pwsh')),
           data.installation.status!=='idle'&&h('p',{role:'status'},data.installation.message),data.installation.output&&h('pre',{style:{whiteSpace:'pre-wrap'}},data.installation.output)),
         h('div',{style:{marginTop:16}},button('重新检测',refresh))))
   }
   ctx.slots.inject('settings.section',()=>ctx.slots.register({name:'settings.section',id:'workbench-intranet',order:35,label:()=> '内网连接'},IntranetPanel))
+  ctx.slots.inject('settings.section',()=>ctx.slots.register({name:'settings.section',id:'workbench-credentials',order:36,label:()=> '服务凭据'},CredentialCatalogPanel))
   ctx.slots.inject('plugins.detail.section',()=>ctx.slots.register({name:'plugins.detail.section',id:'workbench.environment',order:5},Settings))
 }
