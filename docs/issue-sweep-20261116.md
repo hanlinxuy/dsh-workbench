@@ -32,3 +32,14 @@
 CI 43795512543 对 01fb2a4 的五项 job 全绿，包括 Windows 真实执行随包 pwsh.exe 为 7.6.6。该 CI 仅覆盖第一组固定提交，不能代替第二组的最终 CI。
 
 独立安装记录：pnpm 下载/构建完成后进程未退出；终止本次独立安装的 pnpm 子进程后，通过 harness 的 registerInstalledBundles + verifyInstall 完成并验证原生登记，再启动宿主。此安装命令不计为无干预通过；不会以它证明安装链路完全正常。正式 profile 没有变化。
+
+## 固定开发提交 fa367c4 的验收
+
+- Node 24.22.2：111 tests，110 passed，1 skipped（本机非 Windows）。
+- pnpm check 通过；CI [43796857481](https://github.com/hanlinxuy/dsh-workbench/actions/runs/43796857481) 全绿，含 Windows 运行时与三平台回归。
+- 本机独立 profile：issue-sweep-20261116，DSH 0.2.2-rc.1，端口 19516。
+- 首次升级同路径 tgz 命中旧内容；改为 dsh-workbench-suite-fa367c4.tgz 后验证 installed client/runtime/catalog 与构建产物逐字节一致。真实设置页面出现“服务凭据”。
+- UI 保存专用假凭据成功；保存后输入框清空，显示“已保存 · file”。宿主重启后状态仍为已保存；状态响应不含值。
+- 无 cookie 的 status/set/unset 三种凭据请求均返回 401；目录外 ref 的写入被拒。测试假凭据已删除。
+- 未配置真实模型，未进行模型自然语言调用，不把这些结果标为 L1 模型验收。
+- 正式 Desktop、用户会话、IM 均未操作。所有新 Issue 仍保持 open，未把局部实现冒充完整验收。
