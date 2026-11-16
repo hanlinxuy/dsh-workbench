@@ -64,3 +64,10 @@ pnpm exec dsh-workbench pwsh --yes
 第一条只检测/预览。Windows 上已可执行 pwsh7 时不安装；缺少时由 Workbench 独立检查 WinGet 并展示 Microsoft.PowerShell 安装方案。第二条才实际执行，使用非交互 WinGet；需要协议或系统确认时报告需处理状态；不会后台提权、替换 Windows PowerShell 5.1 或覆盖 DSH 自定义 pwshPath。安装后需重启 DSH 并核对实际选中的 shell。
 
 macOS/Linux 下提示无需为 Workbench 安装 PowerShell，不修改环境。内网无 WinGet/网络时，由内网 agent 或管理员使用公司软件源部署；不自动换源或上传配置。Mac 上不能验证 Windows 安装效果。
+
+## 内网 CA
+
+环境行可配置 `tls.trust.sources: [system, file]`、`tls.trust.extraCaFile: /private/company-ca.pem`、`tls.onVerifyError: fail`。
+使用 Node 24 原生 tls.getCACertificates / setDefaultCACertificates，把宿主当前根、Node 内置根、系统根和显式 PEM 合并；无自造 HTTP 客户端，不允许关闭验证。
+PEM 读取/解析失败会显式失败。卸载该行恢复原始默认根；已建 TLS 连接池可能需要重启独立 profile。
+这些配置作用于 Node 请求，不自动改 Git/curl/浏览器信任库。Git 使用组织允许的 http.sslCAInfo 或系统信任；禁止配置 sslVerify=false、NODE_TLS_REJECT_UNAUTHORIZED=0 或 insecure dispatcher。

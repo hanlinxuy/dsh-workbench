@@ -62,3 +62,14 @@ SSO 示例仅支持显式配置的 JSON 登录协议；公司协议不同，由�
 可复用 `dsh-workbench-provider-gateway/pool` 导出的 `createMemoryPool` 作为内网适配器的参考实现。默认禁用，只有操作员设置 `setLending(true)` 后才能 `publish`。每条明确给出 token、可选 tenantKey、账号/团队/后端/模型和 ttlSeconds（默认上限 1200 秒，应小于身份 token 剩余寿命）。`setLending(false)` 立即清空；`close()` 或进程重启也清空；不会持久化或自动续期。节点可以提供 teamKey，必须对借方显示团队计费 warning。`key_source=none` 不尝试用不完整凭据调用上游，而回落本机并给响应添加 warning。用户发布/续期界面由内网池适配器提供，Workbench 不自行发布账号。
 
 本地令牌必须存入 DSH 原生凭据库；没有有效引用则监听器拒绝启动。所有网关 HTTP 路由都鉴权，包括 pool/metrics；轮换原生凭据后立即生效，调用方更新自己的引用，不需要重启网关。设置页继续走宿主会话，不新增明文凭据读取端点。
+
+## 两层探测
+
+设置页“可达性测试”最多读取一次模型列表、发一次最小文本推理，缓存两分钟。
+发现源标 live/declared；没有实际文本就不标文本能力已验证，所有未测模态与上下文上限保持 unknown。
+“能力探测”必须先预览成本，再确认发送；最多三次请求（短输入、声明上限、约 75% 回退），可取消并保留部分记录，429 停止余下请求。
+每请求最多 120 秒，按后台队列计算；已测结果缓存 24 小时。不会自动修改 provider 配置。
+
+默认构造器只能估计 token 数；使用上游 usage.prompt_tokens 记录实测接收量，不把估计当真实上限。
+内网如有精确 tokenizer，可提供 workbenchGatewayProbe.buildPrompt(size,marker)，返回 messages、expectedPromptTokens、verificationText；没有精确计数时 capped 保持 unknown。
+收到 413 会记录明确 capped；后续较小输入成功不会抹掉已确认的上限拒绝。

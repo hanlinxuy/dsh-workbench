@@ -23,6 +23,9 @@ export async function apply(ctx,config){
    const body=JSON.parse(Buffer.concat(chunks).toString())
    let value
    if(body.action==='status')value={node:process.version,pid:process.pid,home,profile,tools:ctx.tools.definitions().map(t=>({name:t.name,descriptionLength:t.description.length})),presets:(await ctx.agentPresets.list()).map(p=>p.id)}
+   else if(body.action==='models'){await controller.initializeDefaultModel();value=await controller.modelCatalog()}
+   else if(body.action==='select-model')value=await controller.selectModel({sessionId:body.sessionId,provider:body.provider,model:body.model})
+   else if(body.action==='plugins')value=(await ctx.get('pluginManager').listPlugins()).map(p=>({id:p.entryId,module:p.moduleName,enabled:p.enabled,phase:p.fiberPhase}))
    else if(body.action==='sessions')value=await controller.list({})
    else if(body.action==='events')value=await controller.events({address:{kind:'session',sessionId:body.sessionId},maxMessages:200,...(body.beforeSeq===undefined?{}:{beforeSeq:body.beforeSeq})},AbortSignal.timeout(30000))
    else if(body.action==='create'){
@@ -32,10 +35,22 @@ export async function apply(ctx,config){
     value=await controller.create({workspaceId:workspace.id,agentPreset:'standard'})
    }else if(body.action==='prompt')value=await controller.prompt({sessionId:body.sessionId,requestId:body.requestId,mode:'queue',content:[{type:'text',text:body.text}]},AbortSignal.timeout(30000))
    else if(body.action==='call'){
-    if(!['chief_project','workbench_git','workbench_browser','workbench_desktop','workbench_knowledge'].includes(body.name))throw Error('Tool not exposed by this test bridge')
+    if(!['chief_project','workbench_git','workbench_git_issue','workbench_git_write','workbench_browser','workbench_browser_act','workbench_desktop','workbench_knowledge','workbench_vision','workbench_output'].includes(body.name))throw Error('Tool not exposed by this test bridge')
     const resolved=await controller.resolveAgent(body.sessionId)
     if(resolved.error)throw Error(resolved.error.message)
-    value=await ctx.tools.execute({name:body.name,arguments:body.args,agent:resolved.agent,callId:`acceptance-${Date.now()}`,signal:AbortSignal.timeout(65000)})
+    value=await ctx.tools.execute({calls:[{type:'tool-call',id:`acceptance-${Date.now()}`,name:body.name,arguments:JSON.stringify(body.args)}],agent:resolved.agent,signal:AbortSignal.timeout(65000)})
+   }else if(body.action==='chief-command'){
+    if(!/^\/(home|where|switch|resume)(?:\s|$)/.test(body.line))throw Error('Only navigation/control commands are exposed')
+    // The bridge token authenticates this isolated test operator. Exercise the
+    // same native route dispatcher as the client, not the Chief controller directly.
+    const response=await ctx.get('connection').createSharedFetchHandler('/api').fetch(new Request('http://isolated.test/api/independent-chief',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({endpoint:'command',payload:{line:body.line,sessionId:body.sessionId}})}),{principal:{kind:'owner'}})
+    value=await response.json()
+   }else if(body.action==='service-change'){
+    if(body.service==='credentials'){
+     if(!body.ref?.startsWith('WB_ACCEPTANCE_')||!['set','unset'].includes(body.operation))throw Error('Only acceptance credentials can be changed')
+     value=await ctx.get('workbenchCredentials')[body.operation](body.ref,body.value)
+    }else if(body.service==='storage')value=await ctx.get('workbenchStorage').change(body.operation,body.input)
+    else throw Error('Unknown test service mutation')
    }else if(body.action==='service-status'){
     const name={credentials:'workbenchCredentials',storage:'workbenchStorage',gateway:'workbenchIntranet'}[body.service]
     if(!name)throw Error('Unknown status service')

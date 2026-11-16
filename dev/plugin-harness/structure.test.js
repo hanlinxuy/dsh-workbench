@@ -14,6 +14,13 @@ test('package exports and declared files exist; web frontend export cannot disap
   await assert.rejects(inspectStructure(root),/client export/)
   await writeFile(join(root,'plugins/fixture/package.json'),JSON.stringify({name:'fixture',exports:{'.':'./missing.js'}}))
   await assert.rejects(inspectStructure(root),/missing export/)
+  await writeFile(join(root,'plugins/fixture/package.json'),JSON.stringify({name:'fixture'}))
+  await mkdir(join(root,'plugins/fixture/rows/x/locale'),{recursive:true});await writeFile(join(root,'plugins/fixture/rows/x.js'),'')
+  await assert.rejects(inspectStructure(root),/row\/directory collision/)
+  await rm(join(root,'plugins/fixture/rows'),{recursive:true})
+  await writeFile(join(root,'plugins/fixture/icon.svg'),'<svg/>')
+  await writeFile(join(root,'plugins/fixture/package.json'),JSON.stringify({name:'fixture',files:['icon.svg']}))
+  await assert.rejects(inspectStructure(root),/icon export/)
  }finally{await rm(root,{recursive:true,force:true})}
 })
 test('static tool descriptions remain within the Workbench budgets',async()=>{

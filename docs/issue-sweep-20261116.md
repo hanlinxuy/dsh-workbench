@@ -58,3 +58,12 @@ CI 43795512543 对 01fb2a4 的五项 job 全绿，包括 Windows 真实执行随
 - Desktop 运行时实测发现 AB 子进程丢失 Electron Node 模式，导致版本检查空结果；仅在 Electron 宿主显式传入 Node 模式标志，修复后同运行时复测通过。
 
 其余 #18/#19/#27/#29/#31/#33/#36/#40 仍需继续实现或补全验收；所有 Issue 最终以完整验收证据决定是否关闭。
+
+## 第四组：真实 Desktop/模型证据与补齐机制（继续验收中）
+
+- 官方 Desktop 0.2.2-rc.1 的原生 pnpm 安装固定 69c079e 包正常退出，Git 原生 schema 修复生效；未触碰既有 Desktop。
+- 真实 DeepSeek 账号模型在隔离 profile 注册、并行派发 Bot/MLX 两个真实项目；均读取 README 与一个实现文件，Chief 实读全文、audit 并 review accepted，下一步持久化。任务提交相隔 18ms，完成分别约 8.9s/14.8s，存在实际并行区间。
+- Bot 项目通过原生会话 prompt 接手后 owner=user，MLX 仍 owner=chief。重启独立 Desktop 后 Chief ID、两项目 session ID、控制权与报告逐字一致；原生 /where、/home、/resume 路由读回成功，交回后两项目归 Chief。
+- 新增远端 Node 24 回归：139 tests，138 passed，1 Windows skipped。含站点业务断言、视觉旁路的拒绝/超时/临时清理、1MB 脱敏输出完整分页与重启/去重/清理、严格 CA fixture。此记录仍非最终固定提交验收。
+- 独立 Desktop 的原生 credentials 保存测试身份、存储桶 token，状态返回 configured/source 元数据，未回传值。后续继续测重启及孤儿清理。
+- 补齐 L1 NDJSON 证据断言和一条命令 preflight；实际宿主检查揭示测试桥调用 tools.execute 的批处理形状与旧写法不同，测试桥已改用 calls 数组。产品正常模型调用不受此桥接问题影响。

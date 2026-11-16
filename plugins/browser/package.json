@@ -1,6 +1,6 @@
 {
   "name": "dsh-workbench-browser",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -15,7 +15,9 @@
     "README.md",
     "LICENSE",
     "site-cards.js",
-    "knowledge.js"
+    "knowledge.js",
+    "verify.js",
+    "vision.js"
   ],
   "dependencies": {
     "agent-browser": "0.41.2"

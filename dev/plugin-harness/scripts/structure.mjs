@@ -11,11 +11,12 @@ export async function inspectStructure(root=resolve(fileURLToPath(new URL('../..
   const pkg=JSON.parse(raw)
   for(const file of pkg.files??[])await stat(join(base,file)).catch(()=>{throw Error(`${pkg.name}: missing packaged file ${file}`)})
   const walk=async value=>{
-   if(typeof value==='string' && value.startsWith('./') && !value.includes('*'))await stat(join(base,value)).catch(()=>{throw Error(`${pkg.name}: missing export ${value}`)})
+   if(typeof value==='string' && value.startsWith('./') && !value.includes('*')){const info=await stat(join(base,value)).catch(()=>{throw Error(`${pkg.name}: missing export ${value}`)});if(!info.isFile())throw Error(`${pkg.name}: export is a directory ${value}`)}
    else if(value && typeof value==='object')for(const child of Object.values(value))await walk(child)
   }
   await walk(pkg.exports)
   if(pkg.dsh?.client && !pkg.exports?.['./client'])throw Error(`${pkg.name}: web client requires ./client export`)
+  if((pkg.files??[]).some(file=>/^icon\.(svg|png|js|mjs)$/.test(file))&&!pkg.exports?.['./icon'])throw Error(`${pkg.name}: icon asset requires ./icon export`)
   const rows=await readdir(join(base,'rows'),{withFileTypes:true}).catch(e=>{if(e.code==='ENOENT')return [];throw e})
   for(const row of rows.filter(r=>r.isDirectory()))if(rows.some(r=>r.isFile() && r.name.replace(/\.[^.]+$/,'')===row.name))throw Error(`${pkg.name}: row/directory collision ${row.name}`)
   results.push(pkg.name)

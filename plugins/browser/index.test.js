@@ -10,3 +10,10 @@ test('optional knowledge registers no capability until explicitly enabled',()=>{
   assert.ok(tools.every(t=>t.description.length<=1300))
  }
 })
+test('read/navigation tool rejects interaction and disabling actions removes that capability',async()=>{
+ const tools=[];apply({tools:{register:t=>tools.push(t)},effect(){}},{actionsEnabled:false})
+ assert.equal(tools.some(t=>t.name==='workbench_browser_act'),false)
+ await assert.rejects(tools.find(t=>t.name==='workbench_browser').execute({action:'click',target:'@e1'},{}),/not part/)
+ const enabled=[];apply({tools:{register:t=>enabled.push(t)},effect(){}},{})
+ assert.ok(enabled.some(t=>t.name==='workbench_browser_act'))
+})

@@ -17,7 +17,7 @@ const mrActions = ['mr_list', 'mr_get', 'mr_comments_list', 'mr_create', 'mr_com
 const validBranch = value => typeof value === 'string' && value.length > 0 && !value.startsWith('-') && !value.startsWith('/') && !value.endsWith('/') && !value.endsWith('.') && !/[\s\x00-\x1f\x7f~^:?*\[\\]/.test(value) && !value.includes('..') && !value.includes('@{') && value !== '@' && value.split('/').every(part => part && !part.startsWith('.') && !part.endsWith('.lock'))
 
 // Configuration is operator-owned, loaded once. Tools cannot mutate policy.
-export function createGit(config = {}, execute = exec, permissionFor = async () => null, authorizeMerge) {
+export function createGit(config = {}, execute = exec, permissionFor = async () => null, authorizeMerge, authorizeEgress) {
   const { platforms = {}, repositories = {} } = config
   for (const [id, platform] of Object.entries(platforms)) {
     if (!['internal', 'external'].includes(platform.network)) throw new Error(`Invalid network: ${id}`)
@@ -52,7 +52,7 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
       const { stdout } = await execute("git", ["-C", cwd, "rev-parse", "--show-toplevel"], { signal, timeout: 10000 })
       const path = stdout.trim()
       const known = Object.entries(repositories).find(([, repo]) => repo.path === path)
-      if (known) return createGit(config, execute, permissionFor, authorizeMerge)({ ...args, repository: known[0] }, signal,undefined,context)
+      if (known) return createGit(config, execute, permissionFor, authorizeMerge, authorizeEgress)({ ...args, repository: known[0] }, signal,undefined,context)
       const remote = args.remote ?? "origin"
       if (!/^[A-Za-z0-9_.-]+$/.test(remote) || remote.startsWith("-")) throw new Error("Invalid remote name")
       const result = await execute("git", ["-C", path, "config", "--get", `remote.${remote}.url`], { signal, timeout: 10000 }).catch(error => { if (error.code === 1) return { stdout: "" }; throw error })
@@ -64,7 +64,7 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
       const platform = configured?.[1] ?? (host === "github.com" ? { kind: "github", network: "external", hosts: [host, "api.github.com"], apiBase: "https://api.github.com", githubLogin: true } : { kind: "git", network: "external", hosts: [host || "unknown"] })
       const permission=await permissionFor(platform.hosts)
       const readOnly = { ...platform, apiWrites: allowedWrites(platform, permission) }
-      return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: permission?.write===true, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: permission?.push===true } } : {} } } }, execute, permissionFor, authorizeMerge)({ ...args, repository: "current" }, signal,undefined,context)
+      return createGit({ platforms: { ...platforms, [platformId]: readOnly }, repositories: { ...repositories, current: { path, platform: platformId, apiRepo, localWrite: permission?.write===true, remotes: raw ? { [remote]: { platform: platformId, url: raw, fetch: true, push: permission?.push===true } } : {} } } }, execute, permissionFor, authorizeMerge, authorizeEgress)({ ...args, repository: "current" }, signal,undefined,context)
     }
     const { action, repository, remote = 'origin', branch, message, paths, number, title, body, page = 1, source_branch, target_branch } = args
     if (action === 'catalog') {
@@ -84,6 +84,7 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
       }).catch(error => { throw new Error(`Git command failed (${error.code ?? 'terminated'}); inspect repository/credentials locally. No write is automatically retried.`) })
       return stdout
     }
+    const mutateGit=argv=>context?.write?context.write(()=>git(argv),{action,repository:repo.path,argv}):git(argv)
     const pending = (queues.get(repository) ?? Promise.resolve()).then(async () => {
       if (action === 'log' && branch !== undefined) {
         if (typeof branch !== 'string' || branch.startsWith('-')) throw new Error('Valid branch required')
@@ -100,17 +101,17 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
         if (action === 'stage') {
           if (!Array.isArray(paths) || !paths.length || paths.some(path => typeof path !== 'string' || !path || isAbsolute(path) || path.split(/[\\/]/).includes('..') || path.startsWith(':'))) throw new Error('Supply relative literal file paths')
           if(args.confirm!==true)return preview()
-          return git(['--literal-pathspecs', 'add', '--', ...paths])
+          return mutateGit(['--literal-pathspecs', 'add', '--', ...paths])
         }
         if (action === 'commit') {
           if (typeof message !== 'string' || !message.trim()) throw new Error('Commit message required')
           if(args.confirm!==true)return preview()
-          return git(['commit', '-m', message])
+          return mutateGit(['commit', '-m', message])
         }
         if (typeof branch !== 'string' || branch.startsWith('-')) throw new Error('Branch required')
         await git(['check-ref-format', '--branch', branch])
         if(args.confirm!==true)return preview()
-        return git(['switch', '--no-guess', branch])
+        return mutateGit(['switch', '--no-guess', branch])
       }
       if (['fetch', 'push', 'remote_head'].includes(action)) {
         const rule = repo.remotes?.[remote]
@@ -125,12 +126,12 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
         const host = remoteHost(rule.url)
         if (!platform.hosts.includes(host)) throw new Error(`Remote host is not allowed: ${host ?? 'unrecognized'}`)
         if (action === 'fetch' && args.confirm!==true)return preview()
-        if (action === 'fetch') return git(['-c', 'http.followRedirects=false', 'fetch', '--no-recurse-submodules', remote])
+        if (action === 'fetch') return mutateGit(['-c', 'http.followRedirects=false', 'fetch', '--no-recurse-submodules', remote])
         if (typeof branch !== 'string' || branch.startsWith('-')) throw new Error('Explicit destination branch required')
         await git(['check-ref-format', `refs/heads/${branch}`])
         if (action === 'remote_head') return git(['-c', 'http.followRedirects=false', 'ls-remote', '--exit-code', '--heads', remote, `refs/heads/${branch}`])
         if(args.confirm!==true)return preview()
-        return git(['-c', 'http.followRedirects=false', '-c', 'push.followTags=false', 'push', '--no-follow-tags', '--recurse-submodules=no', remote, `refs/heads/${branch}:refs/heads/${branch}`])
+        return mutateGit(['-c', 'http.followRedirects=false', '-c', 'push.followTags=false', 'push', '--no-follow-tags', '--recurse-submodules=no', remote, `refs/heads/${branch}:refs/heads/${branch}`])
       }
       const platform = platforms[repo.platform]
       if (!platform || platform.kind === 'git' || !repo.apiRepo) throw new Error('No API adapter configured for this repository')
@@ -178,6 +179,11 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
         // GitLab rejects a changed source head rather than merging unreviewed commits.
         payload = { sha: actual.sha }
       }
+      if(write&&platform.network==='external'){
+        if(!authorizeEgress)throw Error('egress_not_confirmed: external publishing requires native per-call approval')
+        await authorizeEgress(url.href,payload,context)
+      }
+      const send=async()=>{
       const response = await request(url, action === 'mr_merge' ? 'PUT' : write ? 'POST' : 'GET', write ? payload : undefined)
       if(action==='mr_merge'){
         await response.body?.cancel()
@@ -186,6 +192,8 @@ export function createGit(config = {}, execute = exec, permissionFor = async () 
         return JSON.stringify({data:verified,verified:true})
       }
       return JSON.stringify({ data: await response.json(), page, next: response.headers.get('x-next-page') || response.headers.get('link') || null })
+      }
+      return write&&context?.write?context.write(send,{action,repository:repo.apiRepo,url:url.href,payload}):send()
     })
     const settled = pending.then(() => {}, () => {})
     queues.set(repository, settled)

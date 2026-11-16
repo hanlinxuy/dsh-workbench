@@ -1,6 +1,6 @@
 {
   "name": "dsh-workbench-git",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -16,7 +16,8 @@
     "LICENSE",
     "connection-policy.js",
     "write-journal.js",
-    "merge-authorization.js"
+    "merge-authorization.js",
+    "egress.js"
   ],
   "peerDependencies": {
     "@deepseek-ai/dsh-tools": "*"

@@ -5,7 +5,8 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { execFileSync } from 'node:child_process'
-import { createGit, remoteHost } from './runtime.js'
+import { createGit as nativeCreateGit, remoteHost } from './runtime.js'
+const createGit=(...args)=>nativeCreateGit(args[0],args[1],args[2],undefined,async()=>({testApproval:true}))
 
 test('Git local writes, configured internal push, external denial and changed remote', async () => {
   const home = await mkdtemp(join(tmpdir(), 'wb-git-test-'))

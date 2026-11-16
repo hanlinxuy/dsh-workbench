@@ -1,6 +1,6 @@
 # 服务凭据与对象存储
 
-Workbench 设置中的服务凭据按身份、代码平台、模型网关、存储、专利分组。目录由操作员/内网适配器配置在 `workbench-settings.config.services`，页面只读目录元数据并向 DSH 原生 credentials 保存、清除值；没有 HTTP 明文读取接口，也不另建凭据后端。
+Workbench 设置中的服务凭据按身份、代码平台、模型网关、存储、专利分组。目录由操作员/内网适配器配置在 `workbench-settings.config.services`，页面只读目录元数据并向 DSH 原生 credentials 保存、清除值；仅在用户点击单项查看时经原生鉴权临时显示一个 ref，不提供批量明文接口，也不另建凭据后端。
 
 ```yaml
 enabledPresets: [intranet-core, data-compute]

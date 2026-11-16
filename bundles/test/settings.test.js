@@ -4,7 +4,7 @@ import { registerHooks } from 'node:module'
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-const hooks=registerHooks({resolve(specifier,ctx,next){if(specifier==='@deepseek-ai/dsh-atomic-write')return {url:'data:text/javascript,export const withFileLock=async(p,fn)=>fn()',shortCircuit:true};return next(specifier,ctx)}})
+const hooks=registerHooks({resolve(specifier,ctx,next){if(specifier==='@deepseek-ai/dsh-tools')return {url:'data:text/javascript,export const defineTool=x=>x',shortCircuit:true};if(specifier==='@deepseek-ai/dsh-atomic-write')return {url:'data:text/javascript,export const withFileLock=async(p,fn)=>fn()',shortCircuit:true};return next(specifier,ctx)}})
 const {apply}=await import('../settings/runtime.js');hooks.deregister()
 for(const live of [true,false,'failed'])test(`settings migration uses host profile, preserves config and reports ${live?'live reload':'restart required'}`,async()=>{
  const profile=await mkdtemp(join(tmpdir(),'wb-settings-'))
@@ -15,7 +15,7 @@ for(const live of [true,false,'failed'])test(`settings migration uses host profi
   await writeFile(join(profile,'package.json'),JSON.stringify({dependencies:{'dsh-x-memory':'0.1.1'},dsh:{profile:{bundles:['dsh-x-memory','dsh-workbench-core']}}}))
   await writeFile(join(profile,'cordis.patch.yml'),'- id: x-memory\n  config:\n    autoInject: false\n')
   let route,running=true,exclusive=0,reloaded=0
-  apply({provide(){},configEditor:{documentPath:join(profile,'cordis.patch.yml')},effect(fn){fn()},connection:{fetch:{register(r){route=r}}},sessionController:{list:async()=>({items:[{running}]})},get:()=>live?{runExclusive:async fn=>{exclusive++;return fn()},reconcileProfile:async()=>{reloaded++;if(live==='failed')throw Error('reload unavailable');return {warnings:[],pending:[]}}}:undefined})
+  await apply({provide(){},configEditor:{documentPath:join(profile,'cordis.patch.yml')},effect(fn){fn()},connection:{fetch:{register(r){route=r}}},sessionController:{list:async()=>({items:[{running}]})},get:()=>live?{runExclusive:async fn=>{exclusive++;return fn()},reconcileProfile:async()=>{reloaded++;if(live==='failed')throw Error('reload unavailable');return {warnings:[],pending:[]}}}:undefined})
   const request=async action=>(await route.fetch(new Request('http://localhost/api/workbench-settings',{method:'POST',body:JSON.stringify({action})}))).json()
   assert.match((await request('migrate')).error.message,/任务正在运行/)
   running=false

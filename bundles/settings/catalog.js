@@ -40,7 +40,7 @@ export function createCredentialCatalog(services, credentials, enabledPresets = 
    const record=await credentials.resolve(ref).catch(()=>{throw Error(`unauthorized: ${ref}`)})
    if(!record)throw Error(`missing: ${ref}`)
    if(!record.value?.trim())throw Error(`empty: ${ref}`)
-   if(/^(?:your[-_ ]|replace[-_ ]|<[^>]+>$|\$\{)/i.test(record.value))throw Error(`placeholder: ${ref}`)
+   if(/^(?:your[-_ ]|replace[-_ ]|<[^>]+>$|\$\{|changeme$|change-me$|placeholder$)/i.test(record.value))throw Error(`placeholder: ${ref}`)
    return record
   },
   async resolveService(id){

@@ -14,7 +14,9 @@ test('one catalog controls status, storage and domain isolation without exposing
  await assert.rejects(catalog.set('ARBITRARY_SECRET','bad'),/unauthorized/)
  await catalog.unset('IDENTITY_PASSWORD');await assert.rejects(catalog.resolve('IDENTITY_PASSWORD'),/missing/)
  values.set('IDENTITY_PASSWORD','');await assert.rejects(catalog.resolve('IDENTITY_PASSWORD'),/empty/)
- values.set('IDENTITY_PASSWORD','<replace-me>');await assert.rejects(catalog.resolve('IDENTITY_PASSWORD'),/placeholder/)
+ for(const placeholder of ['<replace-me>','changeme']){values.set('IDENTITY_PASSWORD',placeholder);await assert.rejects(catalog.reveal('IDENTITY_PASSWORD'),/placeholder/)}
+ await assert.rejects(catalog.reveal('OUTSIDE_CATALOG'),/unauthorized/)
+ assert.equal(await catalog.reveal('PATENT_PASSWORD'),'patent-secret')
  assert.equal((await createCredentialCatalog(services,provider,['intranet-core','patent']).status()).length,2)
  assert.throws(()=>createCredentialCatalog([...services,{...services[1],id:'duplicate-ref'}],provider),/shared credential ref/)
 })

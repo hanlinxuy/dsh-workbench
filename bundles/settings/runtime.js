@@ -1,3 +1,5 @@
+import {configureTrust} from './tls.js'
+import {installOutput} from './output.js'
 import {createStorageRegistry} from './storage.js'
 import {createCredentialCatalog} from './catalog.js'
 import { dirname, join } from 'node:path'
@@ -7,18 +9,22 @@ import { createIntranetSettings, demoIntranetAdapter } from './intranet.js'
 import { migrate } from '../cli/migrate.mjs'
 
 export const name = 'workbench-settings'
-export const inject = ['connection','configEditor','subprocess','sessionController','credentials']
-export function apply(ctx, config = {}) {
+export const inject = ['connection','configEditor','subprocess','sessionController','credentials','tools','spillStore']
+export async function apply(ctx, config = {}) {
+  const trust=await configureTrust(config.tls)
+  if(trust.restore)ctx.effect(()=>trust.restore,'Workbench native TLS trust')
+  if(trust.configured)console.info(`Workbench TLS trust: ${JSON.stringify(trust.sources)}; certificates=${trust.certificates}`)
   const profile = dirname(ctx.configEditor.documentPath)
+  if(ctx.spillStore&&ctx.tools)await installOutput(ctx,profile,config.spill??{})
   {
     const catalog=createCredentialCatalog(config.services??[],ctx.credentials,config.enabledPresets??[])
     ctx.provide('workbenchCredentials',catalog)
     ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-credentials',methods:['POST'],requestBody:'buffered',async fetch(request){
       try{
         const {action,ref,value}=await request.json()
-        if(!['status','set','unset'].includes(action))throw Error('Unsupported credential action')
-        return Response.json({ok:true,value:action==='status'?await catalog.status():await catalog[action](ref,value)})
-      }catch(error){return Response.json({ok:false,error:{message:error.message}})}
+        if(!['status','set','unset','reveal'].includes(action))throw Error('Unsupported credential action')
+        return Response.json({ok:true,value:action==='status'?await catalog.status():await catalog[action](ref,value)},{headers:{'cache-control':'no-store'}})
+      }catch(error){return Response.json({ok:false,error:{reason:/^(missing|placeholder|empty|unauthorized):/.exec(error.message)?.[1]??'unavailable',message:error.message}},{headers:{'cache-control':'no-store'}})}
     }}),'Workbench credential catalog')
   }
 
@@ -62,7 +68,7 @@ export function apply(ctx, config = {}) {
     const configured=shell?.config?.pwshPath?.get()
     return inspectPowerShell(exec,process.platform,{executable:shell?.pwshPath??'pwsh',source:configured?'configured':shell?.pwshPath?'host':'PATH'})
   }
-  const status = async () => ({migration:await migrate(profile),pwsh:{...await pwsh(),bundled:await bundledPowerShell({enabled:config.bundledPwsh!==false})},busy,installation,lastMigration})
+  const status = async () => ({tls:trust,migration:await migrate(profile),pwsh:{...await pwsh(),bundled:await bundledPowerShell({enabled:config.bundledPwsh!==false})},busy,installation,lastMigration})
   ctx.effect(()=>ctx.connection.fetch.register({path:'/api/workbench-settings',methods:['POST'],requestBody:'buffered',async fetch(request){
     try {
       const {action}=await request.json()

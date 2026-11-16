@@ -37,3 +37,21 @@
 - 教训：安装成功不等于安装了目标提交。
 - 复发: 1
 - 证据：本轮隔离 profile 中新 catalog.js 缺失，改用 fa367c4 包名后逐文件一致。
+
+## M-5：工具 schema 的替身测试漏掉原生限制
+
+- 症状：Git 单测通过，Desktop 加载时因嵌套 authorization 对象缺 additionalProperties:false 而失败。
+- 根因：单测的 defineTool 替身没有执行宿主的完整 schema 校验。
+- 修法：修正 schema，并使用目标 Desktop 自带 SDK 运行 native-schema-preflight。
+- 教训：替身测试不能证明原生注册成功。
+- 复发: 1
+- 证据：69c079e；dev/plugin-harness/scripts/native-schema-preflight.mjs。
+
+## M-6：Electron 宿主子进程误当 GUI 启动
+
+- 症状：Desktop 内执行 agent-browser --version 得到空输出。
+- 根因：以 process.execPath 启动子进程却丢失 Electron 的 Node 模式。
+- 修法：仅在 Electron 宿主中给该子进程显式传 ELECTRON_RUN_AS_NODE=1。
+- 教训：实际 Desktop 运行时也需要验收，普通 Node 通过并不足够。
+- 复发: 1
+- 证据：ed374f8；hwstaff 官方 Desktop 0.2.2-rc.1 的 Node 24.21.0 复测。
