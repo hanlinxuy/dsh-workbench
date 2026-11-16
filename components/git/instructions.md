@@ -29,3 +29,5 @@ through this tool. Chief delegates repository work to project sessions.
 After a push, use remote_head to read the actual remote branch hash and compare it
 with the intended commit. log(branch) reads that local/tracking ref, not the server.
 An empty push output alone is not independent proof of the remote state.
+
+工具按风险分开：workbench_git 只读；workbench_git_issue 创建 issue/评论；workbench_git_write 处理暂存、提交、分支、fetch/push 和 MR 创建/合并。不要向只读工具传写动作。issueTools/writeTools 可由操作员关闭，实际权限仍由平台设置与配置交集决定。

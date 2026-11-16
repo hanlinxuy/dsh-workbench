@@ -60,7 +60,7 @@ HTTP API 和 Git HTTP 不跟随重定向，避免检查一个地址却请求另�
 
 ## 使用
 
-先让模型调用 catalog，再使用仓库 ID。示例：
+在当前 Git 工作区直接提出任务即可；只有命名跨仓库操作才需要配置仓库 ID。示例：
 
 - “查看 workbench 的状态和差异，不修改。”
 - “仅暂存 src/main.ts 并提交这次修复；不要推送。”
@@ -126,3 +126,28 @@ stage / commit / switch / fetch / push / mr_create / mr_merge 默认只做预览
 issue_create / comment_create / mr_comment 沿用明确配置的权限，执行一次，不自动重试。写入审计保存在当前 profile 的 `.workbench-private/audit/git.ndjson`，仅记录动作、仓库、参数指纹、状态和耗时，不保存正文或凭据。started 后失败标 outcome_unknown；先查实际结果，不要自动重复写入。
 
 GitLab 合并仅接受 merge_status=can_be_merged，固定实际 MR SHA，提交后 GET 回读 merged 状态。尚未实现根据子代理评审自动批准合并；当前有副作用的合并仍需原生用户确认。
+
+## 写入恢复与合并授权
+
+每次写操作在 profile 私有 `audit/` 中先创建参数指纹的 pending 标记，再执行；标记不含正文或凭据。网络超时、进程中断后标记保留，跨重启再次提交同一动作会返回 `outcome_unknown`，不产生第二次副作用。先用只读动作确认实际状态，再由操作员核对并移除对应 `<fingerprint>.pending.json`；工具不能自行解除。成功写入记录完成并删除 pending 标记。不要仅因看见超时就删除标记。
+
+`mergeAuthorization` 由操作员配置，默认 `user-confirmed`。合并参数 `authorization` 必须带同一 mode：
+
+- `user-confirmed`：`quote` 与 `sourceSeq` 必须对应本会话实际的人类消息；另需原生一次性批准。
+- `auto-reviewed`：提供 `reviewId`，并安装可信 `workbenchGitReview.verify` 宿主适配器。适配器读取真实子代理审查记录，返回 approved、sha、targetBranch、checksPassed、reviewer；工具不接受模型直接填“审查通过”。缺适配器或证据不匹配时拒绝。
+
+两种模式都必须通过目标分支白名单、实际 MR 状态和 SHA 校验，只有 `can_be_merged` 才继续。PUT 后重新 GET 确认 merged；审计只记录模式、来源序号/确认哈希或审查标识，不向 MR 发流程评论。内网审查适配器仍需按实际团队机制接入。
+
+## 工具分级与外发
+
+- `workbench_git`：只读。可省略 repository，直接发现当前工作目录的 Git remote；不要求重复登记已有仓库。
+- `workbench_git_issue`：issue/comment 类写入（L1）。`issueTools:false` 可不注册此工具。
+- `workbench_git_write`：其他写入（L2），默认预览，实际发送仍需原生一次性确认；`writeTools:false` 可不注册。
+
+旧提示词应把写操作改用对应工具；只读入口会拒绝 mutation action，不静默兼容。
+外网 issue/comment 在平台允许之外还需要当前前台人工来源和每次 allowed-once。
+发送前拦截明显凭据/内部 URL，确认展示目标与内容摘要/哈希；后台/RPC 自动来源拒绝。
+审计只记目标、来源序号、哈希和时间，不保存正文或凭据。不发送真实 issue 的测试使用 HTTP fixture。
+
+写请求发出前登记持久 pending，超时或响应不确定后同一实际目标/正文指纹在重启后仍被阻断。
+授权拒绝、只读预检失败不会留下 pending。结果已独立确认后才允许下一次明确请求。
