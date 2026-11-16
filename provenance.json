@@ -10,7 +10,7 @@
     "chief": "4f0bcf4a9a54a47d200258726137e79b698c9d25",
     "browser": "5e03801b456819159b0a3937a875e25fb5a6a55a",
     "desktop": "5e03801b456819159b0a3937a875e25fb5a6a55a",
-    "git": "5e03801b456819159b0a3937a875e25fb5a6a55a",
+    "git": "81642810555ba041d5f9907d0f07ec3aa10c6da2",
     "provider-gateway": "5e03801b456819159b0a3937a875e25fb5a6a55a"
   },
   "sha256": {
@@ -48,7 +48,7 @@
     "components/desktop/README.md": "3b47f47243a3b58b146e328d9d21a5de7f16c3ae3417abd699ce05ea420d7322",
     "components/desktop/LICENSE": "4705f4d5cdffe68a173c233767273b24c5d1b8da45bd1b603fd69ae47378f2d9",
     "components/git/package.json": "4ed63fcf0e739aa64c49f2c96e8fef60e457194202cff87198bf1ea07f51ac06",
-    "components/git/index.js": "a9fbb70718ace7d1fd8b681eada380828daf9294917561b4a4d4fbab72af0b6d",
+    "components/git/index.js": "fd9f3df0514a841390fd96104d34ece810c6cd6b61ac5d1b934f102e8d86e10e",
     "components/git/runtime.js": "057c26ef44456fa0f3fe13261794e357a45a9c6fb56f0188f6f63bcc62131f6e",
     "components/git/instructions.md": "114b9d4d5e8a77760e584135b90a070cfc80b484708c5db277425b2201ce1a80",
     "components/git/cordis.patch.yml": "40e132e8d9aa623094bbffe61b7a5b701c96da126b1cf375c6063e8c6e0e56d3",
