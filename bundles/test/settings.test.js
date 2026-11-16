@@ -15,7 +15,7 @@ for(const live of [true,false,'failed'])test(`settings migration uses host profi
   await writeFile(join(profile,'package.json'),JSON.stringify({dependencies:{'dsh-x-memory':'0.1.1'},dsh:{profile:{bundles:['dsh-x-memory','dsh-workbench-core']}}}))
   await writeFile(join(profile,'cordis.patch.yml'),'- id: x-memory\n  config:\n    autoInject: false\n')
   let route,running=true,exclusive=0,reloaded=0
-  apply({configEditor:{documentPath:join(profile,'cordis.patch.yml')},effect(fn){fn()},connection:{fetch:{register(r){route=r}}},sessionController:{list:async()=>({items:[{running}]})},get:()=>live?{runExclusive:async fn=>{exclusive++;return fn()},reconcileProfile:async()=>{reloaded++;if(live==='failed')throw Error('reload unavailable');return {warnings:[],pending:[]}}}:undefined})
+  apply({provide(){},configEditor:{documentPath:join(profile,'cordis.patch.yml')},effect(fn){fn()},connection:{fetch:{register(r){route=r}}},sessionController:{list:async()=>({items:[{running}]})},get:()=>live?{runExclusive:async fn=>{exclusive++;return fn()},reconcileProfile:async()=>{reloaded++;if(live==='failed')throw Error('reload unavailable');return {warnings:[],pending:[]}}}:undefined})
   const request=async action=>(await route.fetch(new Request('http://localhost/api/workbench-settings',{method:'POST',body:JSON.stringify({action})}))).json()
   assert.match((await request('migrate')).error.message,/任务正在运行/)
   running=false

@@ -21,3 +21,14 @@
 - pnpm test：103 项通过（本机 Node 26.5.1，后续补 Node 24）。
 - npm 实包检查：pwsh 包包含 bin/pwsh.exe、bin/LICENSE.txt（Microsoft MIT），无安装脚本，仅 win32/x64，固定 npm integrity 已进入 lockfile。
 - 未发送真实 Git 写入；未使用 IM；未修改正式 Desktop。
+
+## 第二组开发进展
+
+- #16：配置驱动的服务凭据目录、原生 credentials 存储、单 ref 白名单写入、状态脱敏、失败原因分类；设置新增“服务凭据”。旧连接配置尚未自动迁移，域/preset 自动联动和完整实例编辑仍待完成。
+- #20/#21：Browser 支持操作员配置的 site → account，按 site/account 隔离 profile，捕获前当前 host 守卫、逐 cookie 域与有效期过滤、身份绑定恢复。真实 AB + 独立 headless Edge + 本机 HTTP fixture 已验证 capture 1 / restore 1 / 页面业务文本读回；未连接任何真实内网站点。
+- #17：Git 高副作用动作默认预览，无远程请求；confirm:true 仍经原生 approval.request，每次只接受 allowed-once。写入日志仅保存参数哈希与元数据。测试覆盖拒绝/缺少交互通道/每次重新询问；完整跨重启不确定写入阻断仍待完成。
+- #30：独立 DSH web 宿主中，不带 cookie、伪造 XMLHttpRequest 请求头调用内网设置得到 401；合法宿主会话返回 200。继续复用原生鉴权，无免密明文端点。
+
+CI 43795512543 对 01fb2a4 的五项 job 全绿，包括 Windows 真实执行随包 pwsh.exe 为 7.6.6。该 CI 仅覆盖第一组固定提交，不能代替第二组的最终 CI。
+
+独立安装记录：pnpm 下载/构建完成后进程未退出；终止本次独立安装的 pnpm 子进程后，通过 harness 的 registerInstalledBundles + verifyInstall 完成并验证原生登记，再启动宿主。此安装命令不计为无干预通过；不会以它证明安装链路完全正常。正式 profile 没有变化。

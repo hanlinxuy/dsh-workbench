@@ -10,7 +10,7 @@ export function createIntranetSettings(profile, adapter) {
   const view=value=>({employeeId:value.employeeId,passwordSaved:!!value.password,maasTokenSaved:!!value.maasToken,gatewayHeaders:(value.gatewayHeaders??[]).map(({value,...row})=>({...row,value:row.secret?'':value,valueSaved:!!value})),gatewayOverrides:value.gatewayOverrides??{},git:value.git.map(({id,label,url,token,permissions})=>({id,label,url,tokenSaved:!!token,permissions:{write:permissions?.write===true,push:permissions?.push===true}})),adapter:adapter?{name:adapter.name,demo:adapter.demo===true,backends:adapter.backends??[]}:null})
   return async (action,input) => {
     const saved=await read()
-    if(action==='status')return view(saved)
+    if(action==='status')return {...view(saved),...(adapter?.status?{gateway:adapter.status()}:{})}
     if(action==='save'){
       if(writing)throw Error('正在保存，请稍后再试。')
       if(!input || typeof input.employeeId!=='string' || typeof input.password!=='string' || typeof input.maasToken!=='string' || !Array.isArray(input.git) || input.git.length>20)throw Error('请检查账号与平台信息。')

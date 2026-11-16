@@ -7,7 +7,7 @@ export function GatewayFields({saved,draft,setDraft,editing,call}){
  const inputStyle={background:'transparent',color:'inherit',border:'1px solid #666',borderRadius:7,padding:8,minWidth:0}
  const button=(text,onClick)=>h('button',{type:'button',onClick,disabled:busy,style:inputStyle},text)
  return h('section',{style:{border:'1px solid #555',borderRadius:14,padding:20,marginTop:12}},
- h('strong',null,'模型网关'),h('p',{style:{opacity:.65,fontSize:13}},'刷新只读取模型列表。同步到 DSH 前会先显示变更。自定义头随“保存连接”生效。'),
+ h('strong',null,'模型网关'),saved.gateway&&h('p',null,`本实例：${saved.gateway.listening?'正在监听':'未监听'} · 端口 ${saved.gateway.port} · PID ${saved.gateway.pid}`),h('p',{style:{opacity:.65,fontSize:13}},'刷新只读取模型列表。同步到 DSH 前会先显示变更。自定义头随“保存连接”生效。'),
  editing?h('div',null,...saved.adapter.backends.map(id=>h('label',{key:id,style:{display:'block',color:draft.gatewayOverrides?.[id]?'#ef9385':'inherit',margin:'10px 0'}},h('input',{type:'checkbox',checked:draft.gatewayOverrides?.[id]===true,onChange:e=>setDraft({...draft,gatewayOverrides:{...draft.gatewayOverrides,[id]:e.target.checked}})}),`${id}：覆盖自动鉴权（开启后不再自动登录）`)),
  ...fields.map(row=>h('div',{key:row.id,style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}},
  h('select',{value:row.backend,style:inputStyle,onChange:e=>update(row.id,'backend',e.target.value)},...saved.adapter.backends.map(id=>h('option',{key:id,value:id},id))),

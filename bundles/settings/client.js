@@ -1,3 +1,4 @@
+import {CredentialCatalogPanel} from './catalog-client.js'
 import { IntranetPanel } from './intranet-client.js'
 import { createElement as h, useEffect, useState } from 'react'
 export function apply(ctx) {
@@ -42,5 +43,6 @@ export function apply(ctx) {
         h('div',{style:{marginTop:16}},button('重新检测',refresh))))
   }
   ctx.slots.inject('settings.section',()=>ctx.slots.register({name:'settings.section',id:'workbench-intranet',order:35,label:()=> '内网连接'},IntranetPanel))
+  ctx.slots.inject('settings.section',()=>ctx.slots.register({name:'settings.section',id:'workbench-credentials',order:36,label:()=> '服务凭据'},CredentialCatalogPanel))
   ctx.slots.inject('plugins.detail.section',()=>ctx.slots.register({name:'plugins.detail.section',id:'workbench.environment',order:5},Settings))
 }

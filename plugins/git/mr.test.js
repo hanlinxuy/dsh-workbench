@@ -7,7 +7,7 @@ const config = (platform = {}, repo = {}) => ({
   platforms: { lab: { kind: 'gitlab', network: 'internal', hosts: ['gitlab.example.invalid'], apiBase: 'https://gitlab.example.invalid/api/v4', ...platform } },
   repositories: { fixture: { path: tmpdir(), platform: 'lab', apiRepo: 'group/sub/repo', ...repo } },
 })
-const args = (action, extra = {}) => ({ action, repository: 'fixture', ...extra })
+const args = (action, extra = {}) => ({ action, repository: 'fixture', confirm:true, ...extra })
 const opened = { iid: 7, target_branch: 'main', state: 'opened', merge_status:'can_be_merged', sha: 'a'.repeat(40) }
 function mock(t, data = opened) {
   const sent = []

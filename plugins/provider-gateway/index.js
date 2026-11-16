@@ -32,6 +32,7 @@ export async function apply(ctx,config={}) {
   const previews=new Map();let syncing=false
   const adapter={
     name:'本地模型网关',
+    status:()=>gateway.status(),
     backends:Object.keys(config.backends),
     async test(){const results=await Promise.all(Object.keys(config.backends).map(async id=>{const r=await gateway.request(id,'models');await r.body?.cancel();return r.ok}));return {connected:results.every(Boolean)}},
     async models(){return (await gateway.models()).map(m=>({id:m.id,name:`${m.backend} · ${m.id}`}))},
