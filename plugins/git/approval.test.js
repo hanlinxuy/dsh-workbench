@@ -18,3 +18,11 @@ test('preview sends zero requests; confirm cannot replace an actual native appro
  await assert.rejects(tool.execute({...args,confirm:true},{signal:execution.signal}),/interactive host approval/)
  assert.equal(requests,2)
 })
+
+test('native subprocess diagnostics distinguish a non-repository and redact credential URLs',async()=>{
+ let tool
+ const ctx={configEditor:{documentPath:join(tmpdir(),'wb-nonexistent-diagnostics/patch.yml')},workingDirectory:{ensure:async()=>'/fixture/not-a-repository'},subprocess:{spawn:()=>({done:Promise.resolve({exitCode:128}),collected:{stdout:{readFrom:()=>({text:'',lossy:false})},stderr:{readFrom:()=>({text:'fatal: not a git repository; https://user:private-password@example.invalid/path',lossy:false})}}})},tools:{register:value=>{if(value.name==='workbench_git')tool=value}},effect(){},get(){}}
+ await apply(ctx,{issueTools:false,writeTools:false})
+ await assert.rejects(tool.execute({action:'status'},{agent:{id:'fixture'},signal:new AbortController().signal}),error=>{assert.match(error.message,/exit 128.*not a git repository/);assert.doesNotMatch(error.message,/private-password/);return true})
+ await assert.rejects(tool.execute({action:'push'},{}),/not part/)
+})
