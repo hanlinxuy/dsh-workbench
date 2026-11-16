@@ -3,6 +3,15 @@ import {join,isAbsolute} from 'node:path'
 import {createHash} from 'node:crypto'
 
 export function redactOutput(text){
+ // Tool results often wrap multiline text in JSON. Decode those strings before
+ // redacting so an escaped newline cannot hide a credential field; re-encode
+ // afterwards to preserve a valid, fully readable JSON result.
+ if(/^[{[]/.test(text.trimStart())){
+  try{return JSON.stringify(JSON.parse(text,(key,value)=>{
+   if(/^(?:[\w-]*token|password|passwd|api[_-]?key|secret|authorization|cookie|set-cookie)$/i.test(key))return '***'
+   return typeof value==='string'?redactOutput(value):value
+  }))}catch{/* Non-JSON command output still uses the text redactor below. */}
+ }
  return text.replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,'***')
   .replace(/\b(authorization|cookie|set-cookie)\s*[:=][^\r\n]*/gi,'$1: ***')
   .replace(/(["']?\b(?:[\w-]*token|password|passwd|api[_-]?key|secret)["']?\s*[:=]\s*)("[^"\r\n]*"|'[^'\r\n]*'|[^\s,;}]+)/gi,(_all,prefix,value)=>prefix+(value[0]==='"'?'"***"':value[0]==="'"?"'***'":'***'))
