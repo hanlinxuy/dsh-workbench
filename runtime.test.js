@@ -2,11 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { createGateway } from './runtime.js'
-const config={port:18793,backends:{a:{baseURL:'https://backend.invalid/v1',auth:{kind:'none'},requestsPerMinute:100000000,fallbackModels:['fallback']}}}
+const config={port:18793,gatewayTokenRef:'LOCAL',backends:{a:{baseURL:'https://backend.invalid/v1',auth:{kind:'none'},requestsPerMinute:100000000,fallbackModels:['fallback']}}}
 const json=(data,status=200)=>Response.json(data,{status})
-const request=(path,body)=>new Request('http://127.0.0.1'+path,body?{method:'POST',body:JSON.stringify(body)}:{})
+const request=(path,body)=>new Request('http://127.0.0.1'+path,body?{method:'POST',headers:{'x-gateway-token':'local-test-token'},body:JSON.stringify(body)}:{headers:{'x-gateway-token':'local-test-token'}})
 const chat={model:'m',messages:[{role:'user',content:'hi'}]}
-function fixture(extra={}){return createGateway({config,credentials:{get:async()=>undefined},sleep:async()=>{},...extra})}
+function fixture(extra={}){return createGateway({config,sleep:async()=>{},...extra,credentials:{...extra.credentials,get:async ref=>ref==='LOCAL'?'local-test-token':extra.credentials?.get(ref)}})}
 
 test('model discovery caches upstream and fallback including null list',async()=>{
  let calls=0,time=0;const g=fixture({now:()=>time,fetchImpl:async()=>{calls++;return json({data:[{id:'m'}]})}})
@@ -15,7 +15,7 @@ test('model discovery caches upstream and fallback including null list',async()=
 })
 test('local auth rejects before upstream and unknown models fail without forwarding chat',async()=>{
  let calls=0;const g=fixture({config:{...config,gatewayTokenRef:'LOCAL'},credentials:{get:async()=> 'secret'},fetchImpl:async()=>{calls++;return json({data:[]})}})
- assert.equal((await g.handle(request('/v1/models'))).status,401);assert.equal(calls,0);await g.close()
+ assert.equal((await g.handle(new Request('http://127.0.0.1/v1/models'))).status,401);assert.equal(calls,0);await g.close()
  const other=fixture({fetchImpl:async()=>json({data:[]})});assert.equal((await other.handle(request('/v1/chat/completions',chat))).status,400);await other.close()
 })
 test('explicit backend passes a new model name unchanged',async()=>{
@@ -41,7 +41,7 @@ test('static auth resolves template references on every request',async()=>{
  await g.handle(request('/a/v1/chat/completions',chat));assert.equal(headers.get('authorization'),'Bearer one');secret='two';await g.handle(request('/a/v1/chat/completions',chat));assert.equal(headers.get('authorization'),'Bearer two');assert.equal(headers.get('x-tenant'),'team');await g.close()
 })
 test('pool 401 falls back locally and pool listing never returns secrets',async()=>{
- let calls=0;const g=fixture({pool:{borrow:async()=>({headers:{authorization:'pool-secret'}}),list:async()=>[{account:'a',team:'t',key_source:'none',left_s:2,models:['m'],state:'ready',token:'pool-secret',key:'tenant-secret'}]},fetchImpl:async(u,o)=>{calls++;return json({},o.headers.get('authorization')?'401'*1:200)}})
+ let calls=0;const g=fixture({pool:{borrow:async()=>({headers:{authorization:'pool-secret'},key_source:'push'}),list:async()=>[{account:'a',team:'t',key_source:'none',left_s:2,models:['m'],state:'ready',token:'pool-secret',key:'tenant-secret'}]},fetchImpl:async(u,o)=>{calls++;return json({},o.headers.get('authorization')?'401'*1:200)}})
  assert.equal((await g.handle(request('/a/v1/chat/completions',chat))).status,200);assert.equal(calls,2);const data=await (await g.handle(request('/pool'))).text();assert.doesNotMatch(data,/pool-secret|tenant-secret/);assert.match(data,/warning/);await g.close()
 })
 test('SSE streams before completion and cancellation reaches upstream',async()=>{
@@ -64,5 +64,20 @@ test('HTTP client disconnect aborts a live streaming upstream',async()=>{
  let upstreamSignal,done;const aborted=new Promise(resolve=>done=resolve)
  const g=fixture({config:{...config,port},fetchImpl:async(u,o)=>{upstreamSignal=o.signal;upstreamSignal.addEventListener('abort',done,{once:true});return new Response(new ReadableStream({start(c){c.enqueue(new TextEncoder().encode('data: streamed\n\n'))},cancel(){}}),{headers:{'content-type':'text/event-stream'}})}})
  await g.start()
- try{const r=await fetch(`http://127.0.0.1:${port}/a/v1/chat/completions`,{method:'POST',body:JSON.stringify(chat)});const reader=r.body.getReader();assert.match(new TextDecoder().decode((await reader.read()).value),/streamed/);await reader.cancel();await Promise.race([aborted,new Promise((_,reject)=>{const t=setTimeout(()=>reject(Error('cancel not propagated')),2000);t.unref()})]);assert.equal(upstreamSignal.aborted,true)}finally{await g.close()}
+ try{const r=await fetch(`http://127.0.0.1:${port}/a/v1/chat/completions`,{method:'POST',headers:{'x-gateway-token':'local-test-token'},body:JSON.stringify(chat)});const reader=r.body.getReader();assert.match(new TextDecoder().decode((await reader.read()).value),/streamed/);await reader.cancel();await Promise.race([aborted,new Promise((_,reject)=>{const t=setTimeout(()=>reject(Error('cancel not propagated')),2000);t.unref()})]);assert.equal(upstreamSignal.aborted,true)}finally{await g.close()}
+})
+
+test('authentication is mandatory, precedes routes, and rotates without restart',async()=>{
+ let key='first',calls=0
+ const g=createGateway({config,credentials:{get:async()=>key},fetchImpl:async()=>{calls++;return json({data:[]})}})
+ for(const headers of [{},{'x-requested-with':'XMLHttpRequest'},{'x-gateway-token':'wrong'}])assert.equal((await g.handle(new Request('http://localhost/pool',{headers}))).status,401)
+ assert.equal(calls,0)
+ const auth=value=>new Request('http://localhost/pool',{headers:{authorization:`Bearer ${value}`}})
+ assert.equal((await g.handle(auth('first'))).status,200)
+ key='second';assert.equal((await g.handle(auth('first'))).status,401);assert.equal((await g.handle(auth('second'))).status,200)
+ await g.close()
+ const missing=createGateway({config:{...config,gatewayTokenRef:undefined},credentials:{get:async()=>undefined}})
+ await assert.rejects(missing.start(),/gatewayTokenRef/)
+ assert.equal((await missing.handle(auth('second'))).status,401)
+ await missing.close()
 })
