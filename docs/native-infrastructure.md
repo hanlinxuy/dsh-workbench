@@ -48,6 +48,8 @@ DSH 的 bundle insert 是追加，不会按组件 ID 自动去重。Workbench �
 
 ## OPS 与 PowerShell 7
 
+0.2.9 起，推荐“设置 → Workbench 环境”：Windows x64 随套装下载固定 PowerShell 7，并在无自定义路径且缺少原生 7 时自动接入；无需 WinGet。缺包可点安装/重试，卸载前可恢复原 Shell。详见 [当前套装方案](workbench-suite.md#029环境与能力归属)。下面的 WinGet CLI 是兼容入口，不是当前默认安装路径。
+
 2026-11-10 查阅：
 
 - [OPS #488](https://github.com/T-Auto/dsh-ops/issues/488) 提及安装 pwsh7，并讨论 Bash/PowerShell 共存；不能据此认为 pwsh7 替代 OPS 全部文件工具/PTC 能力。

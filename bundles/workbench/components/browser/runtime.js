@@ -26,7 +26,7 @@ export function createBrowser({ home, executablePath, headed = false, accounts={
     if(site!==undefined&&!route)throw Error('Unknown site route; configure the site before use')
     if(route && account!==undefined && account!==route.account)throw Error('Site account is operator configured; tool arguments cannot switch its identity')
     account=route?.account??account??'default'
-    if(Object.keys(accounts).length && !Object.hasOwn(accounts,account))throw Error('Configured account missing; no fallback to default identity')
+    if(action!=='version' && Object.keys(accounts).length && !Object.hasOwn(accounts,account))throw Error('Configured account missing; no fallback to default identity')
     if (!/^[a-zA-Z0-9_-]{1,48}$/.test(account)) throw new Error('account must contain 1-48 letters, digits, underscores or hyphens')
     // Fail closed: a caller-supplied confirm flag is not host approval. Do not
     // forward expressions to AB until per-call approval and audit are verified.

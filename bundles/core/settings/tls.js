@@ -21,5 +21,5 @@ export async function configureTrust(config){
   counts.file=certs.length
  }
  tls.setDefaultCACertificates([...new Set(roots)])
- return {configured:true,sources:counts,certificates:new Set(roots).size,extraCaFile:trust.extraCaFile,onVerifyError:'fail',restore:()=>tls.setDefaultCACertificates(before),message:'Native Node trust configured. Existing pooled TLS connections may require a profile restart; Git and browser trust are configured separately.'}
+ return {configured:true,sources:counts,certificates:new Set(roots).size,extraCaFile:trust.extraCaFile,onVerifyError:'fail',restore:()=>tls.setDefaultCACertificates(before),message:'已配置 Node TLS 信任，仍严格校验证书。已有连接池可能需要重启当前 profile；Git 与浏览器沿用各自的证书设置。'}
 }
