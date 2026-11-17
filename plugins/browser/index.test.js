@@ -17,3 +17,11 @@ test('read/navigation tool rejects interaction and disabling actions removes tha
  const enabled=[];apply({tools:{register:t=>enabled.push(t)},effect(){}},{})
  assert.ok(enabled.some(t=>t.name==='workbench_browser_act'))
 })
+test('configured routes remain discoverable without optional site cards or credential disclosure',async()=>{
+ const tools=[];apply({tools:{register:t=>tools.push(t)},effect(){}},{accounts:{employee:{}},sites:{portal:{account:'employee',allowedHosts:['portal.internal'],cookieRef:'SECRET_REF'}}})
+ const tool=tools.find(t=>t.name==='workbench_browser')
+ const result=await tool.execute({action:'site_list'},{})
+ assert.equal(JSON.parse(result)[0].site,'portal');assert.doesNotMatch(result,/SECRET_REF/)
+ assert.equal(JSON.parse(await tool.execute({action:'site_read',site:'portal'},{})).account,'employee')
+ await assert.rejects(tool.execute({action:'site_verify',site:'portal'},{}),/reviewed/)
+})

@@ -45,7 +45,14 @@ export function apply(ctx, config = {}) {
       ownership?.assert('browser',name)
       if(!definition.actions.includes(args.action))throw Error(`Action ${args.action} is not part of ${definition.name}; use the read/navigation or interaction tool`)
       if(['site_list','site_read','site_verify'].includes(args.action)){
-        if(!config.siteCardsDirectory)throw Error('No site card source configured')
+        if(!config.siteCardsDirectory){
+          if(args.action==='site_verify')throw Error('Configure a reviewed site card verification contract before site_verify')
+          const routes=Object.entries(config.sites??{}).map(([site,route])=>({site,account:route.account,allowedHosts:route.allowedHosts,source:'configured-route',instruction:'Pass site on each browser call; no reviewed business verification contract configured'}))
+          if(args.action==='site_list')return output(JSON.stringify(routes),exec)
+          const route=routes.find(r=>r.site===args.site)
+          if(!route)throw Error('Unknown site route')
+          return output(JSON.stringify(route),exec)
+        }
         const cards=await loadSiteCards(config.siteCardsDirectory,{tools:ctx.tools.definitions(exec.agent,exec.toolSet).map(t=>t.name),presets:config.enabledPresets??[]})
         if(args.action==='site_list')return output(JSON.stringify(cards.map(({site,version,access,actions})=>({site,version,access,actions}))),exec)
         const card=cards.find(c=>c.site===args.site)
