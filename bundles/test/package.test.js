@@ -26,7 +26,8 @@ for (const kind of ['core', 'workbench']) test(`${kind}: release provenance and 
   }
   assert.equal(pkg.dependencies['dsh-ops'], undefined)
   assert.ok(!patch.includes('dsh-ops'))
-  assert.ok(!(await read('settings/runtime.js')).includes('dsh-ops'))
+  assert.doesNotMatch(await read('settings/runtime.js'), /(?:from|import\()\s*['"]dsh-ops(?:\/|['"])/)
+  assert.equal(pkg.optionalDependencies['@dsh-ops/pwsh-win32-x64'],'0.2.1')
   assert.equal(pkg.peerDependencies['@deepseek-ai/dsh'], '>=0.2.2-rc.1 <0.2.3-0')
   const provenance = JSON.parse(await read('provenance.json'))
   for(const [name,version] of Object.entries(provenance.versions)) assert.equal(JSON.parse(await read(`components/${name}/package.json`)).version,version)

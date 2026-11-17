@@ -35,15 +35,25 @@ export async function apply(ctx,config){
     value=await controller.create({workspaceId:workspace.id,agentPreset:'standard'})
    }else if(body.action==='prompt')value=await controller.prompt({sessionId:body.sessionId,requestId:body.requestId,mode:'queue',content:[{type:'text',text:body.text}]},AbortSignal.timeout(30000))
    else if(body.action==='call'){
-    if(!['chief_project','workbench_git','workbench_git_issue','workbench_git_write','workbench_browser','workbench_browser_act','workbench_desktop','workbench_knowledge','workbench_vision','workbench_output'].includes(body.name))throw Error('Tool not exposed by this test bridge')
+    if(!['chief_project','workbench_git','workbench_git_issue','workbench_git_write','workbench_browser','workbench_browser_act','workbench_desktop','workbench_output'].includes(body.name))throw Error('Tool not exposed by this test bridge')
     const resolved=await controller.resolveAgent(body.sessionId)
     if(resolved.error)throw Error(resolved.error.message)
-    value=await ctx.tools.execute({calls:[{type:'tool-call',id:`acceptance-${Date.now()}`,name:body.name,arguments:JSON.stringify(body.args)}],agent:resolved.agent,signal:AbortSignal.timeout(65000)})
+    const signal=AbortSignal.timeout(65000),toolSet=await ctx.tools.resolve({agent:resolved.agent,modelSelection:resolved.agent.model.current(),signal})
+    try{value=await ctx.tools.execute({calls:[{type:'tool-call',id:`acceptance-${Date.now()}`,name:body.name,arguments:JSON.stringify(body.args)}],agent:resolved.agent,signal,toolSet})}finally{toolSet.dispose()}
+   }else if(body.action==='admitted-tools'){
+    const resolved=await controller.resolveAgent(body.sessionId)
+    if(resolved.error)throw Error(resolved.error.message)
+    const toolSet=await ctx.tools.resolve({agent:resolved.agent,modelSelection:resolved.agent.model.current(),signal:AbortSignal.timeout(10000)})
+    try{value=ctx.tools.definitions(resolved.agent,toolSet).map(t=>({name:t.name,characters:t.description.length}))}finally{toolSet.dispose()}
    }else if(body.action==='chief-command'){
     if(!/^\/(home|where|switch|resume)(?:\s|$)/.test(body.line))throw Error('Only navigation/control commands are exposed')
     // The bridge token authenticates this isolated test operator. Exercise the
     // same native route dispatcher as the client, not the Chief controller directly.
     const response=await ctx.get('connection').createSharedFetchHandler('/api').fetch(new Request('http://isolated.test/api/independent-chief',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({endpoint:'command',payload:{line:body.line,sessionId:body.sessionId}})}),{principal:{kind:'owner'}})
+    value=await response.json()
+   }else if(body.action==='environment'){
+    if(!['status','trust-system','set-provider','enable-auto-pwsh','disable-auto-pwsh','release-pwsh'].includes(body.operation))throw Error('Unknown isolated environment operation')
+    const response=await ctx.get('connection').createSharedFetchHandler('/api').fetch(new Request('http://isolated.test/api/workbench-settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:body.operation,domain:body.domain,providedBy:body.providedBy})}),{principal:{kind:'owner'}})
     value=await response.json()
    }else if(body.action==='service-change'){
     if(body.service==='credentials'){

@@ -7,6 +7,11 @@ export const name = 'workbench-desktop'
 export const inject = ['tools', 'systemPrompt']
 const instructions = await readFile(new URL('./instructions.md', import.meta.url), 'utf8')
 export function apply(ctx, config = {}) {
+  let ownership
+  ctx.inject?.(['workbenchCapabilities'],scope=>{
+    ownership=scope.workbenchCapabilities
+    scope.effect(()=>{const dispose=ownership.register({domain:'desktop',plugin:name,tools:['workbench_desktop']});return ()=>{dispose();ownership=undefined}},'desktop capability')
+  })
   const run = createDesktop({ home: config.home ?? join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'workbench-desktop'), headed: config.headed === true })
   ctx.tools.register(defineTool({
     name: 'workbench_desktop', timeoutMs: 50000,
@@ -14,9 +19,10 @@ export function apply(ctx, config = {}) {
     parameters: { action: { type: 'string', required: true }, app: { type: 'string' }, ref: { type: 'string' }, value: { type: 'string' }, property: { type: 'string' } },
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
     execute: async(args, exec) => {
+      ownership?.assert('desktop',name)
       const value=await run(args, { signal: exec.signal, scope: exec.agent?.id }).catch(async error=>{throw Error(await (ctx.get?.('workbenchOutput')?.bound(error.message,exec,'workbench_desktop')??error.message))})
       return ctx.get?.('workbenchOutput')?.bound(value,exec,'workbench_desktop')??value
     },
-  }))
-  ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-desktop', order: 410, interpolate: false, text: instructions }), 'Desktop usage')
+   }),{when:()=>ownership?.allows('desktop',name)??true})
+  ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-desktop', order: 410, interpolate: false, text:()=>ownership&&!ownership.allows('desktop',name)?'':instructions }), 'Desktop usage')
 }

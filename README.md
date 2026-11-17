@@ -19,11 +19,11 @@ git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench
 | 插件 | 能力 | 状态 |
 | --- | --- | --- |
 | [ChatGPT provider](docs/chatgpt-provider.md) | ChatGPT 官方授权、DSH 模型提供方 | 上游 submodule，0.1.18 |
-| [Desktop](plugins/desktop/README.md) | 固定 agent-desktop release、原生应用观察与操作 | 可选，0.1.3 |
-| [Git](plugins/git/README.md) | 多平台/remote、分级写权限、逐次外发审批与持久审计 | 可选，0.2.7 |
-| [Browser](plugins/browser/README.md) | 固定 AB release、站点账号、可选知识与视觉旁路 | 可选，0.1.5 |
+| [Desktop](plugins/desktop/README.md) | 固定 agent-desktop release、原生应用观察与操作 | 可选，0.1.4 |
+| [Git](plugins/git/README.md) | 多平台/remote、分级写权限、逐次外发审批与持久审计 | 可选，0.2.8 |
+| [Browser](plugins/browser/README.md) | 固定 AB release、站点账号、私有截图与 Cookie 捕获/恢复 | 可选，0.1.6 |
 | [Chief](plugins/chief/README.md) | 项目调度、记忆、任务验收、人工接手、项目看板 | 0.3.7 |
-| [Provider gateway](plugins/provider-gateway/README.md) | 内网模型路由、探测、排队与受控同步 | 默认关闭，0.1.4 |
+| [Provider gateway](plugins/provider-gateway/README.md) | 内网模型路由、探测、排队与受控同步 | 默认关闭，0.1.5 |
 
 Chief 独立运行在 DSH 内，不依赖 Pi Durable 或 DS-Bot。模型与登录由 DSH 提供。
 `plugins/chief` 是 Chief 的唯一维护目录，后续开发、修复与发布均在本仓库进行。
@@ -51,6 +51,8 @@ pnpm pack:chief
 - [安装、升级与回滚](docs/installation.md)
 - [Chief 使用说明](plugins/chief/README.md)
 - [两项目验收步骤](docs/acceptance.md)
+- [0.2.9 P0 交付与验收](docs/p0-0.2.9.md)
+- [能力归属与工具预算](docs/capability-ownership.md)
 - [0.2.8 机制索引与远端 Desktop 验收](docs/issue-sweep-0.2.8.md)
 - [ChatGPT 套餐 provider](docs/chatgpt-provider.md)（上游插件安装与验收）
 

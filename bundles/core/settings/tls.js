@@ -4,7 +4,7 @@ import {X509Certificate} from 'node:crypto'
 
 // The host owns transport/proxy routing. Configure native Node trust, not a second HTTP client.
 export async function configureTrust(config){
- if(config===undefined)return {configured:false,message:'Using host Node trust; configure tls.trust to add system or file roots.'}
+ if(config===undefined)return {configured:false,message:'当前沿用宿主 Node 信任。企业网关重签导致证书校验失败时，可合并系统根证书；仍失败请由管理员导入企业 CA，或设置 tls.trust.extraCaFile。'}
  if(config.onVerifyError!==undefined&&config.onVerifyError!=='fail')throw Error('TLS verification must fail on untrusted certificates')
  const trust=config.trust??{},sources=trust.sources??['system']
  if(!Array.isArray(sources)||sources.some(s=>!['system','file'].includes(s)))throw Error('TLS trust sources must be system/file')
@@ -21,5 +21,5 @@ export async function configureTrust(config){
   counts.file=certs.length
  }
  tls.setDefaultCACertificates([...new Set(roots)])
- return {configured:true,sources:counts,certificates:new Set(roots).size,extraCaFile:trust.extraCaFile,onVerifyError:'fail',restore:()=>tls.setDefaultCACertificates(before),message:'Native Node trust configured. Existing pooled TLS connections may require a profile restart; Git and browser trust are configured separately.'}
+ return {configured:true,sources:counts,certificates:new Set(roots).size,extraCaFile:trust.extraCaFile,onVerifyError:'fail',restore:()=>tls.setDefaultCACertificates(before),message:'已配置 Node TLS 信任，仍严格校验证书。已有连接池可能需要重启当前 profile；Git 与浏览器沿用各自的证书设置。'}
 }

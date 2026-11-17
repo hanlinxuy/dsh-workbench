@@ -648,12 +648,22 @@ function IntranetPanel() {
 // <stdin>
 var import_react6 = require("react");
 function apply(ctx) {
-  const call = async (action) => {
-    const response = await fetch("api/workbench-settings", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) });
+  const call = async (action, input = {}) => {
+    const response = await fetch("api/workbench-settings", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, ...input }) });
     const result = await response.json();
     if (!result.ok) throw new Error(result.error.message);
     return result.value;
   };
+  function OwnedPanel({ domain, Component }) {
+    const [state, setState] = (0, import_react6.useState)(), [error, setError] = (0, import_react6.useState)("");
+    (0, import_react6.useEffect)(() => {
+      call("status").then((result) => setState(result.capabilities.domains.find((d) => d.domain === domain))).catch((e) => setError(e.message));
+    }, [domain]);
+    if (error) return (0, import_react6.createElement)("p", { role: "alert" }, error);
+    if (!state) return (0, import_react6.createElement)("p", null, "\u6B63\u5728\u786E\u8BA4\u80FD\u529B\u63D0\u4F9B\u8005\u2026");
+    if (state.providedBy && state.providedBy !== "workbench-settings") return (0, import_react6.createElement)("p", null, `\u6B64\u5165\u53E3\u7531 ${state.providedBy} \u63D0\u4F9B\uFF0CWorkbench \u5DF2\u505C\u7528\u91CD\u590D\u5165\u53E3\u3002`);
+    return (0, import_react6.createElement)(Component);
+  }
   function Settings({ subject }) {
     if (subject.kind !== "bundle" || !["dsh-workbench-core", "dsh-workbench-suite"].includes(subject.pkg.name)) return null;
     return (0, import_react6.createElement)(Panel);
@@ -666,12 +676,12 @@ function apply(ctx) {
       const timer = setInterval(refresh, 5e3);
       return () => clearInterval(timer);
     }, []);
-    const run = async (action) => {
+    const run = async (action, input) => {
       setWorking(true);
       setError("");
       setMessage("");
       try {
-        const result = await call(action);
+        const result = await call(action, input);
         if (action === "migrate") {
           setConfirm(false);
           setMessage(result.application === "applied" ? "\u8FC1\u79FB\u5DF2\u751F\u6548\uFF0C\u539F\u914D\u7F6E\u548C\u6570\u636E\u5DF2\u4FDD\u7559\u3002" : result.application === "unchanged" ? "\u6CA1\u6709\u9700\u8981\u8FC1\u79FB\u7684\u7EC4\u4EF6\u3002" : "\u8FC1\u79FB\u5DF2\u4FDD\u5B58\u3002\u8BF7\u91CD\u542F DSH\uFF0C\u8BA9\u65B0\u914D\u7F6E\u751F\u6548\u3002");
@@ -714,17 +724,21 @@ function apply(ctx) {
           { style: card2 },
           (0, import_react6.createElement)("h3", null, "PowerShell 7"),
           (0, import_react6.createElement)("p", null, data.pwsh.message),
-          data.pwsh.bundled && button("\u4F7F\u7528\u968F\u5305 PowerShell 7", () => run("use-bundled-pwsh")),
-          data.pwsh.state === "missing" && button("\u5B89\u88C5 PowerShell 7", () => run("install-pwsh")),
+          data.pwsh.automatic?.status !== "not-needed" && data.pwsh.automatic && (0, import_react6.createElement)("p", { role: "status" }, data.pwsh.automatic.message),
+          data.pwsh.state !== "not-needed" && (0, import_react6.createElement)("div", null, button(data.pwsh.autoEnabled ? "\u5173\u95ED\u81EA\u52A8\u63A5\u5165" : "\u5F00\u542F\u81EA\u52A8\u63A5\u5165", () => run(data.pwsh.autoEnabled ? "disable-auto-pwsh" : "enable-auto-pwsh")), button("\u6062\u590D\u539F Shell\uFF08\u5378\u8F7D\u524D\uFF09", () => run("release-pwsh"))),
+          data.pwsh.state !== "not-needed" && button("\u5B89\u88C5 / \u91CD\u8BD5 PowerShell 7", () => run("install-pwsh")),
           data.installation.status !== "idle" && (0, import_react6.createElement)("p", { role: "status" }, data.installation.message),
           data.installation.output && (0, import_react6.createElement)("pre", { style: { whiteSpace: "pre-wrap" } }, data.installation.output)
         ),
+        (0, import_react6.createElement)("div", { style: card2 }, (0, import_react6.createElement)("h3", null, "TLS \u4FE1\u4EFB"), (0, import_react6.createElement)("p", null, data.tls.message), data.tls.sources && (0, import_react6.createElement)("p", null, `\u5185\u7F6E ${data.tls.sources.bundled} \xB7 \u7CFB\u7EDF ${data.tls.sources.system} \xB7 \u6587\u4EF6 ${data.tls.sources.file}`), button("\u5408\u5E76\u7CFB\u7EDF\u6839\u8BC1\u4E66", () => run("trust-system"))),
+        (0, import_react6.createElement)("div", { style: card2 }, (0, import_react6.createElement)("h3", null, "\u80FD\u529B\u5F52\u5C5E\u4E0E\u5DE5\u5177\u9884\u7B97"), (0, import_react6.createElement)("p", { role: data.capabilities.exceeded || data.capabilities.peakStep > data.capabilities.budget ? "alert" : void 0 }, `\u5F53\u524D profile \u5DF2\u6CE8\u518C\u5DE5\u5177\u63CF\u8FF0 ${data.capabilities.total} / ${data.capabilities.budget} \u5B57\u7B26${data.capabilities.exceeded ? " \xB7 \u8D85\u51FA\u9884\u7B97\uFF0C\u8BF7\u505C\u7528\u91CD\u590D\u5DE5\u5177" : ""}`), data.capabilities.latestStep !== void 0 && (0, import_react6.createElement)("p", { role: data.capabilities.peakStep > data.capabilities.budget ? "alert" : void 0 }, `\u6700\u8FD1\u6A21\u578B\u6B65\u9AA4 ${data.capabilities.latestStep} \u5B57\u7B26 \xB7 \u672C\u6B21\u542F\u52A8\u5CF0\u503C ${data.capabilities.peakStep}${data.capabilities.peakStep > data.capabilities.budget ? " \xB7 \u8D85\u51FA\u9884\u7B97\uFF0C\u8BF7\u51CF\u5C11\u91CD\u590D\u5DE5\u5177" : ""}`), ...data.capabilities.domains.map((d) => (0, import_react6.createElement)("p", { key: d.domain }, `${d.domain}\uFF1A${d.providedBy ?? "\u672A\u6307\u5B9A"}${d.conflict ? " \xB7 \u591A\u4E2A\u63D0\u4F9B\u8005\uFF0C\u8BF7\u6307\u5B9A providedBy" : ""}${d.missing ? " \xB7 \u6307\u5B9A\u63D0\u4F9B\u8005\u672A\u52A0\u8F7D" : ""}`, (0, import_react6.createElement)("select", { "aria-label": `${d.domain} \u63D0\u4F9B\u8005`, value: d.providedBy ?? "", disabled, onChange: (e) => run("set-provider", { domain: d.domain, providedBy: e.target.value }) }, (0, import_react6.createElement)("option", { value: "", disabled: true }, "\u9009\u62E9\u63D0\u4F9B\u8005"), ...d.providers.map((p) => (0, import_react6.createElement)("option", { key: p.plugin, value: p.plugin }, p.plugin))))), (0, import_react6.createElement)("p", null, `\u672A\u58F0\u660E\u5F52\u5C5E\u7684\u5DE5\u5177\uFF1A${data.capabilities.undeclared.join("\u3001") || "\u65E0"}`)),
         (0, import_react6.createElement)("div", { style: { marginTop: 16 } }, button("\u91CD\u65B0\u68C0\u6D4B", refresh))
       )
     );
   }
-  ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "workbench-intranet", order: 35, label: () => "\u5185\u7F51\u8FDE\u63A5" }, IntranetPanel));
-  ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "workbench-credentials", order: 36, label: () => "\u670D\u52A1\u51ED\u636E" }, CredentialCatalogPanel));
+  ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "workbench-environment", order: 37, label: () => "Workbench \u73AF\u5883" }, Panel));
+  ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "workbench-intranet", order: 35, label: () => "\u5185\u7F51\u8FDE\u63A5" }, () => (0, import_react6.createElement)(OwnedPanel, { domain: "model-connections", Component: IntranetPanel })));
+  ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "workbench-credentials", order: 36, label: () => "\u670D\u52A1\u51ED\u636E" }, () => (0, import_react6.createElement)(OwnedPanel, { domain: "credentials", Component: CredentialCatalogPanel })));
   ctx.slots.inject("plugins.detail.section", () => ctx.slots.register({ name: "plugins.detail.section", id: "workbench.environment", order: 5 }, Settings));
 }
 ;return module.exports})();const original=module.exports.apply;module.exports={...module.exports,apply:(ctx,config)=>{original(ctx,config);settings.apply(ctx)}};return Object.defineProperty({...module.exports},Symbol.toStringTag,{value:'Module'})}})

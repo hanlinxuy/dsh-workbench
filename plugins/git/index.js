@@ -11,6 +11,11 @@ export const name = 'workbench-git'
 export const inject = ['tools', 'systemPrompt', 'workingDirectory', 'subprocess', 'configEditor']
 const instructions = await readFile(new URL('./instructions.md', import.meta.url), 'utf8')
 export async function apply(ctx, config = {}) {
+  let ownership
+  ctx.inject?.(['workbenchCapabilities'],scope=>{
+    ownership=scope.workbenchCapabilities
+    scope.effect(()=>{const dispose=ownership.register({domain:'git',plugin:name,tools:['workbench_git', 'workbench_git_issue', 'workbench_git_write']});return ()=>{dispose();ownership=undefined}},'git capability')
+  })
   // Use the host's managed subprocess provider, including cancellation and
   // scrubbed environment. Never forward all of process.env back into it.
   const execHost = async (file, args, options = {}) => {
@@ -54,6 +59,7 @@ export async function apply(ctx, config = {}) {
     parameters:Object.fromEntries(definition.fields.map(key=>[key,parameters[key]])),
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
     execute: async (args, exec) => {
+      ownership?.assert('git',name)
       if(!definition.actions.includes(args.action))throw Error(`Action ${args.action} is not part of ${definition.name}; select the matching read, issue or write tool`)
       const cwd=exec.agent ? await ctx.workingDirectory.ensure(exec.agent,exec.signal):undefined
       if(['stage','commit','switch','fetch','push','mr_create','mr_merge'].includes(args.action) && args.confirm===true && !(args.action==='mr_merge'&&gitConfig.mergeAuthorization==='auto-reviewed')){
@@ -68,7 +74,7 @@ export async function apply(ctx, config = {}) {
       const value=await run(args,exec.signal,cwd,{...exec,write:(operation,identity)=>journal(identity,undefined,operation)}).catch(async error=>{throw Error(output?await output.bound(error.message,exec,definition.name):error.message)})
       return output?output.bound(value,exec,definition.name):value
     },
-   }))
+   }),{when:()=>ownership?.allows('git',name)??true})
   }
-  ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-git', order: 420, interpolate: false, text: instructions }), 'Git usage')
+  ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-git', order: 420, interpolate: false, text:()=>ownership&&!ownership.allows('git',name)?'':instructions }), 'Git usage')
 }

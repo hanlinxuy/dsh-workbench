@@ -3,10 +3,10 @@ import assert from 'node:assert/strict'
 import {registerHooks} from 'node:module'
 const hooks=registerHooks({resolve(id,ctx,next){if(id==='@deepseek-ai/dsh-tools')return {url:'data:text/javascript,export const defineTool=x=>x',shortCircuit:true};return next(id,ctx)}})
 const {apply}=await import('./index.js');hooks.deregister()
-test('optional knowledge registers no capability until explicitly enabled',()=>{
+test('retired knowledge and vision never register even with legacy config',()=>{
  for(const enabled of [undefined,false,true]){
-  const tools=[];apply({tools:{register:t=>tools.push(t)},effect(){}},{knowledge:{enabled,index:'/nonexistent/private-index.json'}})
-  assert.equal(tools.some(t=>t.name==='workbench_knowledge'),enabled===true)
+  const tools=[];apply({tools:{register:t=>tools.push(t)},effect(){}},{knowledge:{enabled,index:'/nonexistent/private-index.json'},vision:{enabled}} )
+  assert.equal(tools.some(t=>['workbench_knowledge','workbench_vision'].includes(t.name)),false)
   assert.ok(tools.every(t=>t.description.length<=1300))
  }
 })
@@ -16,4 +16,12 @@ test('read/navigation tool rejects interaction and disabling actions removes tha
  await assert.rejects(tools.find(t=>t.name==='workbench_browser').execute({action:'click',target:'@e1'},{}),/not part/)
  const enabled=[];apply({tools:{register:t=>enabled.push(t)},effect(){}},{})
  assert.ok(enabled.some(t=>t.name==='workbench_browser_act'))
+})
+test('configured routes remain discoverable without optional site cards or credential disclosure',async()=>{
+ const tools=[];apply({tools:{register:t=>tools.push(t)},effect(){}},{accounts:{employee:{}},sites:{portal:{account:'employee',allowedHosts:['portal.internal'],cookieRef:'SECRET_REF'}}})
+ const tool=tools.find(t=>t.name==='workbench_browser')
+ const result=await tool.execute({action:'site_list'},{})
+ assert.equal(JSON.parse(result)[0].site,'portal');assert.doesNotMatch(result,/SECRET_REF/)
+ assert.equal(JSON.parse(await tool.execute({action:'site_read',site:'portal'},{})).account,'employee')
+ await assert.rejects(tool.execute({action:'site_verify',site:'portal'},{}),/reviewed/)
 })
