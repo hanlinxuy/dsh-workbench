@@ -22,6 +22,10 @@ opens of the same account reuse that login. Do not copy the user's daily browser
 Do not ask the user to paste passwords into chat; prefer interactive sign-in or the site's
 existing secret integration. Tool arguments are recorded by the host.
 
+Use site_list to discover configured routes even when no site cards are installed.
+Pass the chosen site on every subsequent call so the operator's account and host apply.
+Do not inspect profile credentials or configuration files to discover account names.
+
 Read a project's site-specific instructions when supplied; use its page names and workflow,
 but get fresh refs from snapshot rather than storing refs in site instructions.
 Chief coordinates tasks through project sessions; browser work belongs in those sessions.
