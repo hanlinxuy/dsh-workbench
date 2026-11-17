@@ -3,6 +3,7 @@ export function createCapabilities({owners={},budget=16000,mode='warn'}={},defin
  if(!owners||typeof owners!=='object'||Array.isArray(owners)||Object.entries(owners).some(([domain,row])=>!domain||!row||typeof row.providedBy!=='string'||!row.providedBy))throw Error('capabilities.owners requires domain: {providedBy: plugin-id}')
  if(!Number.isInteger(budget)||budget<1||!['warn','block'].includes(mode))throw Error('Invalid tool description budget or mode')
  const providers=new Map()
+ let latestStep,peakStep=0
  const service={
   register({domain,plugin,tools=[],label=domain}){
    if(typeof domain!=='string'||!domain||typeof plugin!=='string'||!plugin||!Array.isArray(tools)||tools.some(t=>typeof t!=='string'))throw Error('Invalid capability declaration')
@@ -21,9 +22,9 @@ export function createCapabilities({owners={},budget=16000,mode='warn'}={},defin
     const active=candidates.filter(p=>service.allows(domain,p.plugin))
     return {domain,providedBy:selected??(active.length===1?active[0].plugin:undefined),providers:candidates.map(p=>({...p,enabled:service.allows(domain,p.plugin)})),conflict:active.length>1,missing:!!selected&&!candidates.some(p=>p.plugin===selected)}
    })
-   return {budget,mode,total,exceeded:total>budget,tools:rows,domains,undeclared:rows.filter(t=>!declared.some(p=>p.tools.includes(t.name))).map(t=>t.name)}
+   return {budget,mode,total,latestStep,peakStep,exceeded:total>budget,tools:rows,domains,undeclared:rows.filter(t=>!declared.some(p=>p.tools.includes(t.name))).map(t=>t.name)}
   },
-  check(scope,toolSet){const state=service.status(scope,toolSet);if(mode==='block'&&state.exceeded)throw Error(`Tool description budget exceeded: ${state.total}/${budget}; disable duplicate tools in Workbench settings`);return state},
+  check(scope,toolSet){const state=service.status(scope,toolSet);latestStep=state.total;peakStep=Math.max(peakStep,state.total);if(mode==='block'&&state.exceeded)throw Error(`Tool description budget exceeded: ${state.total}/${budget}; disable duplicate tools in Workbench settings`);return state},
  }
  return service
 }
