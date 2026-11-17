@@ -73,3 +73,34 @@ SSO 示例仅支持显式配置的 JSON 登录协议；公司协议不同，由�
 默认构造器只能估计 token 数；使用上游 usage.prompt_tokens 记录实测接收量，不把估计当真实上限。
 内网如有精确 tokenizer，可提供 workbenchGatewayProbe.buildPrompt(size,marker)，返回 messages、expectedPromptTokens、verificationText；没有精确计数时 capped 保持 unknown。
 收到 413 会记录明确 capped；后续较小输入成功不会抹掉已确认的上限拒绝。
+
+## 适配器契约（本轮固定）
+
+在网关加载前，由内网插件 `ctx.provide`；适配器自己的配置/UI 是站点协议，通用凭据和模型配置仍走 Workbench。
+
+| 服务 | 入参 | 返回 | 失败与取消 |
+| --- | --- | --- | --- |
+| `workbenchGatewayLogin` 函数 | `{backend, auth, credentials, signal}`；credentials.get(ref) 返回字符串或 undefined | `{token: 非空字符串, ttlMs: 正数毫秒}`，省略 TTL 使用配置或 10 分钟 | 缺凭据/拒绝/格式错误抛不含秘密的 Error；必须把 signal 传给 I/O。共享登录限时 30 秒，网关关闭即取消；单个请求取消不取消其他请求共享的登录 |
+| `workbenchGatewayPool.borrow` | `(backend, model, signal)` | 无匹配返回 undefined；可用返回 `{headers, key_source:'push'|'team'}`；缺凭据返回 `{key_source:'none',error:'missing-dual-credentials'}` | 异常终止本次请求，不自动重复借用；收到上游 401 后仅回退本机凭据。signal 使用本次请求超时/调用方取消/网关关闭的组合 |
+| `workbenchGatewayPool.list` | 无 | 数组，仅 account/team/models/key_source/left_s/state/warning/uses 元数据 | 不返回 headers/token/key；可返回 Promise。适配器自身应给远端元数据读取设置超时，推荐读取内存快照 |
+
+`headers` 仅在进程内传给上游，不写配置、日志或 `/pool`。`push` 表示本条借用同时有 token 与 tenant key，`team` 表示采用节点团队 key（会有提示），`none` 不发借用请求。授权借用范围、账号选择和凭据 TTL 由内网适配器负责；Workbench 不提供匿名池发布接口。适配器必须尊重 AbortSignal，不能无限等待或在取消后继续外发。未经适配器支持的协议不能靠改字段名宣称接入成功。
+
+可直接运行的两个参考实现位于 `adapter-examples.js`，并有本地 HTTP 实测：
+
+```js
+import {createJSONLogin,createCredentialPool} from 'dsh-workbench-provider-gateway/adapter-examples'
+export const inject=['credentials']
+export function apply(ctx,config){
+  const credentials={get:async ref=>(await ctx.credentials.resolve(ref))?.value}
+  ctx.provide('workbenchGatewayLogin',createJSONLogin({
+    url:config.loginURL,accountRef:'EMPLOYEE_ID',passwordRef:'EMPLOYEE_PASSWORD',
+  }))
+  ctx.provide('workbenchGatewayPool',createCredentialPool({credentials,entries:[{
+    backend:'maas',account:'employee',team:'team',models:['your-model'],
+    tokenRef:'MAAS_TOKEN',tenantKeyRef:'MAAS_TENANT_KEY',
+  }]}))
+}
+```
+
+SSO 例子的协议固定为 POST `{username,password}` → `{access_token}`，内网按真实协议替换；双凭据例子每次从本机凭据引用读取，不缓存或发布秘密。运行 `node --test plugins/provider-gateway/adapter-examples.test.js` 验证成功、拒绝、取消、轮换、缺字段及元数据不含秘密。

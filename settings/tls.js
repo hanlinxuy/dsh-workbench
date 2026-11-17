@@ -4,7 +4,7 @@ import {X509Certificate} from 'node:crypto'
 
 // The host owns transport/proxy routing. Configure native Node trust, not a second HTTP client.
 export async function configureTrust(config){
- if(config===undefined)return {configured:false,message:'Using host Node trust; configure tls.trust to add system or file roots.'}
+ if(config===undefined)return {configured:false,message:'当前沿用宿主 Node 信任。企业网关重签导致证书校验失败时，可合并系统根证书；仍失败请由管理员导入企业 CA，或设置 tls.trust.extraCaFile。'}
  if(config.onVerifyError!==undefined&&config.onVerifyError!=='fail')throw Error('TLS verification must fail on untrusted certificates')
  const trust=config.trust??{},sources=trust.sources??['system']
  if(!Array.isArray(sources)||sources.some(s=>!['system','file'].includes(s)))throw Error('TLS trust sources must be system/file')
