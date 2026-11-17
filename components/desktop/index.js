@@ -7,8 +7,11 @@ export const name = 'workbench-desktop'
 export const inject = ['tools', 'systemPrompt']
 const instructions = await readFile(new URL('./instructions.md', import.meta.url), 'utf8')
 export function apply(ctx, config = {}) {
-  const ownership=ctx.get?.('workbenchCapabilities')
-  if(ownership)ctx.effect(()=>ownership.register({domain:'desktop',plugin:name,tools:['workbench_desktop']}),'desktop capability')
+  let ownership
+  ctx.inject?.(['workbenchCapabilities'],scope=>{
+    ownership=scope.workbenchCapabilities
+    scope.effect(()=>{const dispose=ownership.register({domain:'desktop',plugin:name,tools:['workbench_desktop']});return ()=>{dispose();ownership=undefined}},'desktop capability')
+  })
   const run = createDesktop({ home: config.home ?? join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'workbench-desktop'), headed: config.headed === true })
   ctx.tools.register(defineTool({
     name: 'workbench_desktop', timeoutMs: 50000,

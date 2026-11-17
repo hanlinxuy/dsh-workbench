@@ -11,8 +11,11 @@ export const name = 'workbench-git'
 export const inject = ['tools', 'systemPrompt', 'workingDirectory', 'subprocess', 'configEditor']
 const instructions = await readFile(new URL('./instructions.md', import.meta.url), 'utf8')
 export async function apply(ctx, config = {}) {
-  const ownership=ctx.get?.('workbenchCapabilities')
-  if(ownership)ctx.effect(()=>ownership.register({domain:'git',plugin:name,tools:['workbench_git', 'workbench_git_issue', 'workbench_git_write']}),'git capability')
+  let ownership
+  ctx.inject?.(['workbenchCapabilities'],scope=>{
+    ownership=scope.workbenchCapabilities
+    scope.effect(()=>{const dispose=ownership.register({domain:'git',plugin:name,tools:['workbench_git', 'workbench_git_issue', 'workbench_git_write']});return ()=>{dispose();ownership=undefined}},'git capability')
+  })
   // Use the host's managed subprocess provider, including cancellation and
   // scrubbed environment. Never forward all of process.env back into it.
   const execHost = async (file, args, options = {}) => {
