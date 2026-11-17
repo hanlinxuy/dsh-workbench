@@ -11,8 +11,11 @@ export const inject = ['tools', 'systemPrompt','credentials','subprocess']
 const instructions = await readFile(new URL('./instructions.md', import.meta.url), 'utf8')
 
 export function apply(ctx, config = {}) {
-  const ownership=ctx.get?.('workbenchCapabilities')
-  if(ownership)ctx.effect(()=>ownership.register({domain:'browser',plugin:name,tools:['workbench_browser','workbench_browser_act'],label:'浏览器'}),'Browser capability')
+  let ownership
+  ctx.inject?.(['workbenchCapabilities'],scope=>{
+    ownership=scope.workbenchCapabilities
+    scope.effect(()=>{const dispose=ownership.register({domain:'browser',plugin:name,tools:['workbench_browser', 'workbench_browser_act']});return ()=>{dispose();ownership=undefined}},'browser capability')
+  })
   const output=(value,exec,name='workbench_browser')=>ctx.get?.('workbenchOutput')?.bound(value,exec,name)??value
   const run = createBrowser({
     home: config.home ?? join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'workbench-browser'),
