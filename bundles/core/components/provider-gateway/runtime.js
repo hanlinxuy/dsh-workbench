@@ -46,7 +46,9 @@ export function createGateway({ config, credentials, fetchImpl = fetch, now = Da
         if(!s.logging) {
           s.logging=Promise.resolve().then(()=>login({backend:id,auth:b.auth,credentials,signal:AbortSignal.any([lifetime.signal,AbortSignal.timeout(30000)])})).then(result=>{
             if(!result || typeof result.token!=='string' || !result.token)throw Error(`Update credentials for ${id}`)
-            s.token=result.token;s.expires=now()+(result.ttlMs ?? b.auth.tokenTTLMs ?? 600000)
+            const ttl=result.ttlMs??b.auth.tokenTTLMs??600000
+            if(!Number.isFinite(ttl)||ttl<=0)throw Error('SSO adapter must return a positive TTL')
+            s.token=result.token;s.expires=now()+ttl
             return result.token
           }).finally(()=>{s.logging=null})
         }

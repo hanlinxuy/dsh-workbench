@@ -2,8 +2,8 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
-import { mkdir, writeFile } from 'node:fs/promises'
-import { createHash } from 'node:crypto'
+import { mkdir, writeFile, readFile, stat, readdir, unlink, chmod } from 'node:fs/promises'
+import { createHash, randomUUID } from 'node:crypto'
 
 function parsePrivateJSON(text){
   try{return JSON.parse(text)}catch{throw Error('Invalid private browser state; no values returned')}
@@ -12,7 +12,9 @@ const exec = promisify(execFile)
 const require = createRequire(import.meta.url)
 const launcher = join(dirname(require.resolve('agent-browser/package.json')), 'bin/agent-browser.js')
 
-export function createBrowser({ home, executablePath, headed = false, accounts={}, sites={}, credentials }, execute = exec) {
+export function createBrowser({ home, executablePath, headed = false, accounts={}, sites={}, credentials, screenshots={} }, execute = exec) {
+  const retentionDays=screenshots.retentionDays??7,maxBytes=screenshots.maxBytes??67108864
+  if(!Number.isFinite(retentionDays)||retentionDays<=0||!Number.isInteger(maxBytes)||maxBytes<1024)throw Error('Invalid screenshot retention or budget')
   const cookieRefs=new Set()
   for(const [id,site] of Object.entries(sites)){
     if(!/^[a-zA-Z0-9_-]{1,48}$/.test(id)||!site||!Object.hasOwn(accounts,site.account)||!Array.isArray(site.allowedHosts)||!site.allowedHosts.length||site.allowedHosts.some(host=>typeof host!=='string'||!/^[a-z0-9.-]+$/i.test(host)))throw Error(`Invalid site/account route: ${id}`)
@@ -42,6 +44,7 @@ export function createBrowser({ home, executablePath, headed = false, accounts={
         if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Browser open supports only HTTP(S) URLs')
         return ['open', url.href]
       },
+      screenshot: () => ['screenshot',join(home,'screenshots',randomUUID()+'.png')],
       snapshot: () => ['snapshot', '-i'],
       click: () => ['click', target],
       fill: () => ['fill', target, value],
@@ -100,6 +103,7 @@ export function createBrowser({ home, executablePath, headed = false, accounts={
         }
         return JSON.stringify({site,account,restored:cookies.length,expired:record.cookies.length-cookies.length})
       }
+      if(action==='screenshot')await mkdir(join(home,'screenshots'),{recursive:true,mode:0o700})
       const { stdout, stderr } = await execute(process.execPath, [launcher, ...args], {
         env, cwd: root, signal, timeout: 60000, maxBuffer: 2 * 1024 * 1024,
       }).catch(error => {
@@ -111,11 +115,38 @@ export function createBrowser({ home, executablePath, headed = false, accounts={
       if(action==='capture'){
         const result=parsePrivateJSON(stdout),cookies=result.data?.cookies
         if(!result.success||!Array.isArray(cookies))throw Error('not_logged_in: cookie capture returned no valid session')
-        const kept=cookies.filter(c=>typeof c.domain==='string'&&typeof c.name==='string'&&typeof c.value==='string'&&route.allowedHosts.some(host=>host===c.domain.replace(/^\./,'')||host.endsWith('.'+c.domain.replace(/^\./,'')))&&(c.expires===-1||c.expires>Date.now()/1000))
+        const kept=[],droppedReasons={invalid:0,domain:0,expired:0}
+        for(const cookie of cookies){
+          if(!cookie||typeof cookie.domain!=='string'||typeof cookie.name!=='string'||typeof cookie.value!=='string'||typeof cookie.expires!=='number'){droppedReasons.invalid++;continue}
+          const domain=cookie.domain.replace(/^\./,'')
+          if(!route.allowedHosts.some(host=>host===domain||host.endsWith('.'+domain))){droppedReasons.domain++;continue}
+          if(cookie.expires!==-1&&cookie.expires<=Date.now()/1000){droppedReasons.expired++;continue}
+          kept.push(cookie)
+        }
         if(!kept.length)throw Error('not_logged_in: no live cookies for this site; sign in first')
         const capturedAt=new Date().toISOString()
         await credentials.set(route.cookieRef,JSON.stringify({site,account,capturedAt,cookies:kept})).catch(()=>{throw Error('Cookie credential storage unavailable')})
-        return JSON.stringify({site,account,kept:kept.length,dropped:cookies.length-kept.length,capturedAt})
+        return JSON.stringify({site,account,kept:kept.length,dropped:cookies.length-kept.length,droppedReasons,capturedAt})
+      }
+      if(action==='screenshot'){
+        const result=parsePrivateJSON(stdout)
+        if(result.success!==true)throw Error('Screenshot capture failed')
+        const path=command[1]
+        await chmod(path,0o600)
+        const image=await readFile(path)
+        if(image.length<24||!image.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('Screenshot did not produce PNG evidence')
+        if(image.length>maxBytes){await unlink(path);throw Error('Screenshot exceeds private artifact budget')}
+        const directory=join(home,'screenshots'),files=[]
+        for(const name of await readdir(directory)){
+          if(!/^[0-9a-f-]{36}\.png$/.test(name))continue
+          const file=join(directory,name),info=await stat(file)
+          if(info.isFile())files.push({path:file,size:info.size,time:info.mtimeMs})
+        }
+        let used=files.reduce((n,f)=>n+f.size,0)
+        for(const file of files.sort((a,b)=>a.time-b.time)){
+          if(file.path!==path&&(Date.now()-file.time>retentionDays*86400000||used>maxBytes)){await unlink(file.path);used-=file.size}
+        }
+        return JSON.stringify({path,mimeType:'image/png',width:image.readUInt32BE(16),height:image.readUInt32BE(20),bytes:image.length,sha256:createHash('sha256').update(image).digest('hex'),account,site,retentionDays})
       }
       return stdout.trim() || stderr.trim()
     })

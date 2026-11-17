@@ -21,8 +21,8 @@ export async function approveEgress({target,payload,exec,controller,approval,int
  const destination=new URL(target)
  const fingerprint=createHash('sha256').update(text).digest('hex')
  const summary=text.length>1200?text.slice(0,900)+' … '+text.slice(-250):text
- const classification=payload.kind==='image'?'Image content is unverified. Review the displayed local image path before approving.':'Issue/comment text; no detected credentials/internal URLs. This scan is not a guarantee of public suitability.'
- const decision=await approval.request({agent:exec.agent,toolName:payload.kind==='image'?'workbench_vision':'workbench_git_issue',callId:exec.callId,signal:exec.signal,reason:`Publish externally to ${destination.origin}${destination.pathname}\nClassification: ${classification}\nPayload metadata/text (${text.length} chars, SHA256 ${fingerprint}):\n${summary}\nApproval applies only to this request.`})
+ const classification='Issue/comment text; no detected credentials/internal URLs. This scan is not a guarantee of public suitability.'
+ const decision=await approval.request({agent:exec.agent,toolName:'workbench_git_issue',callId:exec.callId,signal:exec.signal,reason:`Publish externally to ${destination.origin}${destination.pathname}\nClassification: ${classification}\nPayload metadata/text (${text.length} chars, SHA256 ${fingerprint}):\n${summary}\nApproval applies only to this request.`})
  if(decision!=='allowed-once')throw Error(`egress_not_confirmed: ${decision}`)
  await mkdir(auditDirectory,{recursive:true,mode:0o700})
  await appendFile(join(auditDirectory,'egress.ndjson'),JSON.stringify({at:new Date().toISOString(),host:destination.host,path:destination.pathname,fingerprint,sessionId:exec.agent.id,sourceSeq:origin.seq,decision:'allowed-once'})+'\n',{mode:0o600})
