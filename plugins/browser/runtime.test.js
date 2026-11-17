@@ -89,12 +89,29 @@ test('capture filters the cookie jar and restore uses bound site/account without
  try{
   const captured=await run({action:'capture',site:'portal'})
   assert.doesNotMatch(captured,/private-cookie|wrong-cookie|expired-cookie/)
-  assert.equal(JSON.parse(captured).kept,1);assert.equal(JSON.parse(captured).dropped,2)
+  assert.equal(JSON.parse(captured).kept,1);assert.equal(JSON.parse(captured).dropped,2);assert.deepEqual(JSON.parse(captured).droppedReasons,{invalid:0,domain:1,expired:1})
   assert.doesNotMatch(stored,/wrong-cookie|expired-cookie/)
   const restored=await run({action:'restore',site:'portal'});assert.equal(sets,1);assert.doesNotMatch(restored,/private-cookie/)
   stored=JSON.stringify({...JSON.parse(stored),site:'other'})
   await assert.rejects(run({action:'restore',site:'portal'}),/captured_for_other_site/);assert.equal(sets,1)
   stored=JSON.stringify({site:'portal',account:'primary',cookies:[cookie('portal.example.invalid','expired',1)]})
   await assert.rejects(run({action:'restore',site:'portal'}),/expired/);assert.equal(sets,1)
+ }finally{await rm(home,{recursive:true,force:true})}
+})
+
+test('screenshot returns private PNG metadata and prunes only owned artifacts',async()=>{
+ const {writeFile,stat}=await import('node:fs/promises')
+ const home=await mkdtemp(join(tmpdir(),'wb-screenshot-'))
+ const png=Buffer.alloc(32);Buffer.from([137,80,78,71,13,10,26,10]).copy(png);png.writeUInt32BE(640,16);png.writeUInt32BE(480,20)
+ const run=createBrowser({home,screenshots:{maxBytes:1024}},async(_file,args)=>{const at=args.indexOf('screenshot');assert.ok(at>=0);await writeFile(args[at+1],png);return {stdout:JSON.stringify({success:true}),stderr:''}})
+ try{
+  const result=JSON.parse(await run({action:'screenshot'}))
+  assert.equal(result.width,640);assert.equal(result.height,480);assert.equal(result.bytes,32);assert.equal(result.sha256.length,64)
+  assert.doesNotMatch(JSON.stringify(result),/base64/)
+  if(process.platform!=='win32')assert.equal((await stat(result.path)).mode&0o777,0o600)
+  const unrelated=join(home,'screenshots','keep-business.png');await writeFile(unrelated,'business')
+  for(let n=0;n<34;n++)await run({action:'screenshot'})
+  assert.ok((await readdir(join(home,'screenshots'))).includes('keep-business.png'))
+  assert.equal((await readdir(join(home,'screenshots'))).length,33)
  }finally{await rm(home,{recursive:true,force:true})}
 })

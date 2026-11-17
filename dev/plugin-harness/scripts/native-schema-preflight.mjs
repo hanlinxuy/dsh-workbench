@@ -11,7 +11,7 @@ let count=0,total=0
 for(const plugin of ['git','browser','desktop']){
  const {apply}=await import(`../../../plugins/${plugin}/index.js`)
  const ctx={configEditor:{documentPath:'/unused-schema-preflight/patch.yml'},credentials:{},tools:{register(tool){assert.ok(tool.parameters?.type==='object');total+=inspectToolBudget(tool.name,tool.description);count++}},effect(){},get(){}}
- await apply(ctx,{home:'/unused-schema-preflight',knowledge:{enabled:true,index:'/unused-schema-preflight/index.json'},vision:{enabled:true,baseURL:'http://127.0.0.1/v1',model:'schema-only'}})
+ await apply(ctx,{home:'/unused-schema-preflight'})
 }
 hooks.deregister();assert.ok(total<=8200)
 console.log(JSON.stringify({status:'passed',tools:count,descriptionCharacters:total,node:process.version}))

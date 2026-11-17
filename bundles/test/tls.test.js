@@ -3,12 +3,13 @@ import assert from 'node:assert/strict'
 import {mkdtemp,readFile,rm} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {execFileSync} from 'node:child_process'
+import {execFileSync,spawnSync} from 'node:child_process'
 import {createServer} from 'node:https'
 import * as tls from 'node:tls'
 import {configureTrust} from '../settings/tls.js'
 
-test('native trust rejects an unknown CA, adds explicit roots and preserves built-in trust',async()=>{
+test('native trust rejects an unknown CA, adds explicit roots and preserves built-in trust',async t=>{
+ if(spawnSync('openssl',['version']).error?.code==='ENOENT'){t.skip('OpenSSL unavailable; real TLS chain test requires OpenSSL');return}
  const dir=await mkdtemp(join(tmpdir(),'workbench-tls-')),before=tls.getCACertificates('default')
  let server
  try{

@@ -61,3 +61,25 @@ test('Windows packaged runtime executes the pinned PowerShell version', {skip:pr
  const detected=await inspectPowerShell(async argv=>{const r=await promisify(execFile)(argv[0],argv.slice(1),{timeout:20000});return {exitCode:0,stdout:r.stdout}},'win32',{executable,source:'bundled'})
  assert.equal(detected.state,'ready');assert.equal(detected.version,'7.6.6')
 })
+
+test('automatic profile integration preserves user choice, validates Core, survives upgrade and releases only owned paths',async()=>{
+ const {reconcilePowerShell}=await import('../settings/powershell.js')
+ let override={},managed,writes=0
+ const editor={configuration:()=>[{entry:{options:{id:'shell'}},override,inherited:{}}],edit:async(_e,fn)=>{override=fn(override,{});writes++}}
+ const args={editor,platform:'win32',arch:'x64',executable:'C:/bundle/pwsh.exe',hostPath:'powershell.exe',saveManaged:async v=>{managed=v},exec:async argv=>({exitCode:0,stdout:argv[0]==='powershell.exe'?'5.1':argv.at(-1).includes('PSEdition')?'7.6.6|Core':'7.6.6'})}
+ assert.equal((await reconcilePowerShell(args)).status,'ready');assert.equal(writes,1)
+ assert.equal((await reconcilePowerShell({...args,managed})).status,'ready');assert.equal(writes,1)
+ await reconcilePowerShell({...args,managed,executable:'C:/new/pwsh.exe'})
+ assert.equal(override.pwshPath,'C:/new/pwsh.exe')
+ await reconcilePowerShell({...args,managed,release:true});assert.equal(override.pwshPath,undefined)
+ override.pwshPath='C:/user/pwsh.exe'
+ const before=writes
+ assert.equal((await reconcilePowerShell(args)).status,'user-managed');assert.equal(writes,before)
+ await reconcilePowerShell({...args,managed:{path:'C:/old/pwsh.exe'},release:true});assert.equal(override.pwshPath,'C:/user/pwsh.exe')
+ override={}
+ assert.equal((await reconcilePowerShell({...args,executable:undefined})).status,'missing')
+ assert.equal((await reconcilePowerShell({...args,exec:async argv=>({exitCode:0,stdout:argv[0]==='powershell.exe'?'5.1':'7.6.6|Desktop'})})).status,'invalid')
+ assert.equal((await reconcilePowerShell({...args,enabled:false})).status,'disabled')
+ assert.equal((await reconcilePowerShell({...args,platform:'darwin'})).status,'not-needed')
+ assert.equal((await reconcilePowerShell({...args,exec:async()=>({exitCode:0,stdout:'7.6.6'})})).status,'host-ready')
+})

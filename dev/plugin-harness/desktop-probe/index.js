@@ -35,7 +35,7 @@ export async function apply(ctx,config){
     value=await controller.create({workspaceId:workspace.id,agentPreset:'standard'})
    }else if(body.action==='prompt')value=await controller.prompt({sessionId:body.sessionId,requestId:body.requestId,mode:'queue',content:[{type:'text',text:body.text}]},AbortSignal.timeout(30000))
    else if(body.action==='call'){
-    if(!['chief_project','workbench_git','workbench_git_issue','workbench_git_write','workbench_browser','workbench_browser_act','workbench_desktop','workbench_knowledge','workbench_vision','workbench_output'].includes(body.name))throw Error('Tool not exposed by this test bridge')
+    if(!['chief_project','workbench_git','workbench_git_issue','workbench_git_write','workbench_browser','workbench_browser_act','workbench_desktop','workbench_output'].includes(body.name))throw Error('Tool not exposed by this test bridge')
     const resolved=await controller.resolveAgent(body.sessionId)
     if(resolved.error)throw Error(resolved.error.message)
     value=await ctx.tools.execute({calls:[{type:'tool-call',id:`acceptance-${Date.now()}`,name:body.name,arguments:JSON.stringify(body.args)}],agent:resolved.agent,signal:AbortSignal.timeout(65000)})

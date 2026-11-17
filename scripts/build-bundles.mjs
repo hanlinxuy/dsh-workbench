@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, rm, access } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
@@ -17,6 +17,11 @@ const rows = text => {
   return text.slice(text.indexOf(marker) + marker.length).trimEnd() + '\n'
 }
 for (const kind of ['core', 'workbench']) {
+  for(const name of ['knowledge.js','vision.js']){
+    const path=new URL(`bundles/${kind}/components/browser/${name}`,root)
+    if(process.argv.includes('--check'))assert.equal(await access(path).then(()=>true,()=>false),false,`Retired ${name} remains in bundle`)
+    else await rm(path,{force:true})
+  }
   const manifest = JSON.parse(await read(`bundles/${kind}/package.json`))
   const files = new Map(), components = []
   for (const [directory, commit] of Object.entries(lock)) {
@@ -59,7 +64,7 @@ for (const kind of ['core', 'workbench']) {
     patch += stringify(entries).trimEnd().split('\n').map(line => `    ${line}`).join('\n') + '\n'
   }
   for (const name of ['workbench.mjs','migrate.mjs']) files.set(`cli/${name}`, Buffer.from(await read(`bundles/cli/${name}`)))
-  for (const name of ['runtime.js','powershell.js','intranet.js','catalog.js','storage.js','tls.js','spill.js','output.js']) files.set(`settings/${name}`, Buffer.from(await read(`bundles/settings/${name}`)))
+  for (const name of ['runtime.js','powershell.js','intranet.js','catalog.js','storage.js','tls.js','spill.js','output.js','capabilities.js']) files.set(`settings/${name}`, Buffer.from(await read(`bundles/settings/${name}`)))
   for (const [lang,title,description] of [['zh-CN','环境设置','检测重复登记，迁移配置并管理 PowerShell 7。'],['en','Environment settings','Check component registration, migrate settings and set up PowerShell 7.']]) files.set(`settings/locale/${lang}.json`, Buffer.from(JSON.stringify({meta:{title,description}},null,2)))
   files.set('cordis.patch.yml', Buffer.from(patch))
   files.set('persona/package.json', Buffer.from(JSON.stringify({name: 'workbench-chief-persona', type: 'module'})))
