@@ -24,5 +24,5 @@ export function apply(ctx, config = {}) {
       return ctx.get?.('workbenchOutput')?.bound(value,exec,'workbench_desktop')??value
     },
    }),{when:()=>ownership?.allows('desktop',name)??true})
-  ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-desktop', order: 410, interpolate: false, text: instructions }), 'Desktop usage')
+  ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-desktop', order: 410, interpolate: false, text:()=>ownership&&!ownership.allows('desktop',name)?'':instructions }), 'Desktop usage')
 }

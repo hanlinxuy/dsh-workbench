@@ -76,5 +76,5 @@ export async function apply(ctx, config = {}) {
     },
    }),{when:()=>ownership?.allows('git',name)??true})
   }
-  ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-git', order: 420, interpolate: false, text: instructions }), 'Git usage')
+  ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-git', order: 420, interpolate: false, text:()=>ownership&&!ownership.allows('git',name)?'':instructions }), 'Git usage')
 }

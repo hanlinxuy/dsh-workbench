@@ -64,5 +64,5 @@ export function apply(ctx, config = {}) {
     },
    }),{when:()=>ownership?.allows('browser',name)??true})
   }
-  ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-browser', order: 400, interpolate: false, text: instructions }), 'Browser usage')
+  ctx.effect(() => ctx.systemPrompt.section({ name: 'workbench-browser', order: 400, interpolate: false, text:()=>ownership&&!ownership.allows('browser',name)?'':instructions }), 'Browser usage')
 }

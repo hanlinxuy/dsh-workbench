@@ -38,7 +38,13 @@ export async function apply(ctx,config){
     if(!['chief_project','workbench_git','workbench_git_issue','workbench_git_write','workbench_browser','workbench_browser_act','workbench_desktop','workbench_output'].includes(body.name))throw Error('Tool not exposed by this test bridge')
     const resolved=await controller.resolveAgent(body.sessionId)
     if(resolved.error)throw Error(resolved.error.message)
-    value=await ctx.tools.execute({calls:[{type:'tool-call',id:`acceptance-${Date.now()}`,name:body.name,arguments:JSON.stringify(body.args)}],agent:resolved.agent,signal:AbortSignal.timeout(65000)})
+    const signal=AbortSignal.timeout(65000),toolSet=await ctx.tools.resolve({agent:resolved.agent,modelSelection:resolved.agent.model.current(),signal})
+    try{value=await ctx.tools.execute({calls:[{type:'tool-call',id:`acceptance-${Date.now()}`,name:body.name,arguments:JSON.stringify(body.args)}],agent:resolved.agent,signal,toolSet})}finally{toolSet.dispose()}
+   }else if(body.action==='admitted-tools'){
+    const resolved=await controller.resolveAgent(body.sessionId)
+    if(resolved.error)throw Error(resolved.error.message)
+    const toolSet=await ctx.tools.resolve({agent:resolved.agent,modelSelection:resolved.agent.model.current(),signal:AbortSignal.timeout(10000)})
+    try{value=ctx.tools.definitions(resolved.agent,toolSet).map(t=>({name:t.name,characters:t.description.length}))}finally{toolSet.dispose()}
    }else if(body.action==='chief-command'){
     if(!/^\/(home|where|switch|resume)(?:\s|$)/.test(body.line))throw Error('Only navigation/control commands are exposed')
     // The bridge token authenticates this isolated test operator. Exercise the

@@ -60,6 +60,16 @@ test('Windows packaged runtime executes the pinned PowerShell version', {skip:pr
  assert.ok(executable,'optional Windows runtime must be installed')
  const detected=await inspectPowerShell(async argv=>{const r=await promisify(execFile)(argv[0],argv.slice(1),{timeout:20000});return {exitCode:0,stdout:r.stdout}},'win32',{executable,source:'bundled'})
  assert.equal(detected.state,'ready');assert.equal(detected.version,'7.6.6')
+ const {reconcilePowerShell}=await import('../settings/powershell.js')
+ let override={},managed
+ const editor={configuration:()=>[{entry:{options:{id:'shell'}},override,inherited:{}}],edit:async(_row,change)=>{override=change(override,{})}}
+ const exec=async argv=>{if(argv[0]!==executable)return {exitCode:1,stdout:''};const r=await promisify(execFile)(argv[0],argv.slice(1),{timeout:20000});return {exitCode:0,stdout:r.stdout}}
+ const args={editor,exec,platform:'win32',arch:'x64',executable,hostPath:'missing-pwsh',saveManaged:async value=>{managed=value}}
+ assert.equal((await reconcilePowerShell(args)).status,'ready')
+ assert.equal(override.pwshPath,executable)
+ assert.equal((await reconcilePowerShell({...args,managed})).status,'ready')
+ await reconcilePowerShell({...args,managed,release:true});assert.equal(override.pwshPath,undefined)
+
 })
 
 test('automatic profile integration preserves user choice, validates Core, survives upgrade and releases only owned paths',async()=>{

@@ -82,6 +82,7 @@ export async function apply(ctx, config = {}) {
   let automatic
   const bundlePath=async()=>await bundledPowerShell({enabled:config.bundledPwsh!==false,resolve:createRequire(join(profile,'package.json')).resolve})??await bundledPowerShell({enabled:config.bundledPwsh!==false})
   const reconcile=async(release=false)=>{
+    if(process.platform==='win32'&&!ctx.get('shell'))return automatic={status:'waiting',message:'正在等待宿主 Shell 就绪，随后自动检测 PowerShell。'}
     const managed=await readFile(managedFile,'utf8').then(JSON.parse,error=>{if(error.code==='ENOENT')return undefined;throw error})
     automatic=await reconcilePowerShell({editor:ctx.configEditor,exec,enabled:config.autoPwsh!==false,executable:await bundlePath(),hostPath:ctx.get('shell')?.pwshPath,managed,release,saveManaged:async value=>{
       if(value===undefined){await unlink(managedFile).catch(error=>{if(error.code!=='ENOENT')throw error});return}
@@ -91,6 +92,7 @@ export async function apply(ctx, config = {}) {
     return automatic
   }
   await reconcile()
+  ctx.inject?.(['shell'],async()=>{await reconcile()})
   const editSettings=async change=>{
     const row=ctx.configEditor.configuration().find(r=>r.entry.options.id==='workbench-settings')
     if(!row)throw Error('Workbench settings row unavailable')
