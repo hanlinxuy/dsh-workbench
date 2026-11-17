@@ -20,4 +20,5 @@ test('actual scope definitions include third party tools and budget gate sees ch
  tools.push({name:'more',description:'123'})
  assert.throws(()=>registry.check(),/8\/6/)
  assert.equal(registry.check('chief').total,0)
+ assert.equal(registry.status().peakStep,8);assert.equal(registry.status().latestStep,0)
 })

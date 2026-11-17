@@ -40,4 +40,4 @@ Workbench Browser/Desktop/Git 已参与该机制；凭据、存储与模型连�
 
 重复工具迁移顺序：先给唯一保留的适配器声明 domain/plugin/tools，选择 providedBy，重启核对模型工具和设置入口，再停用旧插件。业务协议仍属于内网适配器；Workbench 不接管其凭据内容或猜测公司接口。
 
-设置页的全局总量是“已注册”工具清单（还未进入特定模型步骤，可能包含条件式工具）；真正的 `block` 闸门在提示构建时使用该步骤的 admitted toolSet。外部测试或脚本调用带 `when` 的工具，也必须先调用宿主 `tools.resolve({agent,modelSelection:agent.model.current(),signal})`，把返回的 toolSet 传给 execute，最后 dispose；不应绕过 admission 直接取 execute 函数。
+设置页还展示最近模型步骤与本次启动峰值，避免只看全局工具而漏掉 preset 扩展导致的超限。设置页的全局总量是“已注册”工具清单（还未进入特定模型步骤，可能包含条件式工具）；真正的 `block` 闸门在提示构建时使用该步骤的 admitted toolSet。外部测试或脚本调用带 `when` 的工具，也必须先调用宿主 `tools.resolve({agent,modelSelection:agent.model.current(),signal})`，把返回的 toolSet 传给 execute，最后 dispose；不应绕过 admission 直接取 execute 函数。
