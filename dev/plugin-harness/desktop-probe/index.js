@@ -45,6 +45,10 @@ export async function apply(ctx,config){
     // same native route dispatcher as the client, not the Chief controller directly.
     const response=await ctx.get('connection').createSharedFetchHandler('/api').fetch(new Request('http://isolated.test/api/independent-chief',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({endpoint:'command',payload:{line:body.line,sessionId:body.sessionId}})}),{principal:{kind:'owner'}})
     value=await response.json()
+   }else if(body.action==='environment'){
+    if(!['status','trust-system','set-provider','enable-auto-pwsh','disable-auto-pwsh','release-pwsh'].includes(body.operation))throw Error('Unknown isolated environment operation')
+    const response=await ctx.get('connection').createSharedFetchHandler('/api').fetch(new Request('http://isolated.test/api/workbench-settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:body.operation,domain:body.domain,providedBy:body.providedBy})}),{principal:{kind:'owner'}})
+    value=await response.json()
    }else if(body.action==='service-change'){
     if(body.service==='credentials'){
      if(!body.ref?.startsWith('WB_ACCEPTANCE_')||!['set','unset'].includes(body.operation))throw Error('Only acceptance credentials can be changed')
