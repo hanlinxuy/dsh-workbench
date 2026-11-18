@@ -19,7 +19,7 @@ const hooks = registerHooks({
 const { apply } = await import('./index.js')
 hooks.deregister()
 
-function host({ failRegister = false, failRelease = false, createGate, onPrompt } = {}) {
+function host({ failRegister = false, failRelease = false, createGate, onPrompt, resolveError } = {}) {
   const effects = new Map()
   const events = new Map()
   const stats = { restrict: 0, released: 0, registrations: 0, created: 0 }
@@ -52,7 +52,10 @@ function host({ failRegister = false, failRelease = false, createGate, onPrompt 
     workspaceRegistry: { resolveByPath: async () => ({ id: 'workspace' }) },
     sessionController: {
       async create() { stats.created++; if (createGate) await createGate.promise; return { sessionId: 'project' } },
-      resolveAgent: async id => ({ agent: { ...agent, id } }),
+      resolveAgent: async id => {
+        const error = resolveError?.(id)
+        return error ? { error } : { agent: id === agent.id ? agent : { ...agent, id } }
+      },
       inspect: async () => ({ events: [] }),
       prompt: async value => { await onPrompt?.(value, stats) },
     },
@@ -159,4 +162,41 @@ test('teardown drains an admitted register before releasing its lease and tool r
     assert.equal(state.projects[0].sessionId, 'project')
     assert.equal(mock.stats.released, 1)
   } finally { gate.resolve(); await operation?.catch(() => {}); await effect.dispose(); await rm(dir, { recursive: true, force: true }) }
+})
+
+test('a missing Chief is rebuilt once and preserves project state and navigation across restart', async () => {
+  const project = { id: 'p', name: 'P', sessionId: 'worker', owner: 'user', seen: [], job: null }
+  const { dir, mock, effect } = await fixture({
+    resolveError: id => id === 'chief' ? { code: 'session/not-found', message: 'session not found' } : undefined,
+  }, [project])
+  try {
+    await eventually(async () => (await mock.request('state')).ok)
+    const opened = await Promise.all([mock.request('open'), mock.request('open')])
+    assert.equal(mock.stats.created, 1)
+    assert.equal(mock.stats.registrations, 2)
+    assert.equal(opened[0].value.chiefSessionId, 'project')
+    assert.deepEqual(opened[0], opened[1])
+    assert.equal((await mock.request('state')).value.sessionRecovery.recoveredFrom, 'chief')
+    assert.deepEqual((await mock.request('state')).value.projects, [project])
+    assert.equal(JSON.parse(await readFile(join(dir, 'state.json'), 'utf8')).chiefSessionId, 'project')
+    await effect.dispose()
+    const dispose = effect.setup()
+    try {
+      await eventually(async () => (await mock.request('state')).ok)
+      assert.equal(mock.stats.created, 1)
+      assert.deepEqual(await mock.request('open'), opened[0])
+      assert.equal((await mock.request('command', { line: '/home', sessionId: 'worker' })).value.sessionId, 'project')
+    } finally { await dispose() }
+  } finally { await effect.dispose(); await rm(dir, { recursive: true, force: true }) }
+})
+
+test('a Chief lookup error other than session/not-found leaves the binding intact', async () => {
+  const { dir, mock, effect } = await fixture({
+    resolveError: () => ({ code: 'gateway/internal', message: 'storage unavailable' }),
+  })
+  try {
+    await eventually(async () => (await mock.request('open')).error?.message.includes('storage unavailable'))
+    assert.equal(mock.stats.created, 0)
+    assert.equal(JSON.parse(await readFile(join(dir, 'state.json'), 'utf8')).chiefSessionId, 'chief')
+  } finally { await effect.dispose(); await rm(dir, { recursive: true, force: true }) }
 })

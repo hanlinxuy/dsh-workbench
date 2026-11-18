@@ -39,6 +39,37 @@ export function apply(ctx, config = {}) {
   let initError
   let activity
   let isStopped = () => true
+  let binding
+  function ensureChiefSession() {
+    binding ??= (async () => {
+      const previous = store.state.chiefSessionId ?? config.chiefSessionId
+      if (previous && await restoreChiefPreset(ctx, previous, { allowMissing: true })) {
+        if (store.state.chiefSessionId !== previous) {
+          store.state.chiefSessionId = previous
+          await store.save()
+        }
+        return previous
+      }
+
+      const root = join(directory, 'workspace')
+      await mkdir(root, { recursive: true })
+      const workspace = await ctx.workspaceRegistry.resolveByPath(root) ?? await ctx.workspaceRegistry.create(root, 'Chief')
+      const { sessionId } = await ctx.sessionController.create({ workspaceId: workspace.id, agentPreset: 'independent-chief' })
+      const resolved = await ctx.sessionController.resolveAgent(sessionId)
+      if (resolved.error) throw resolved.error
+      await ctx.sessionTitle.rename(resolved.agent.session, 'Chief')
+      chiefSessionId = sessionId
+      installChiefTool(resolved.agent)
+      store.state.chiefSessionId = sessionId
+      if (previous) {
+        store.state.sessionRecovery = { recoveredFrom: previous, recoveredAt: new Date().toISOString() }
+        if (store.state.route?.sessionId === previous) store.state.route = { ...store.state.route, sessionId }
+      }
+      await store.save()
+      return sessionId
+    })().finally(() => { binding = undefined })
+    return binding
+  }
   const storeEffect = createLifecycle(async stopped => {
     isStopped = stopped
     initialized = false
@@ -92,23 +123,7 @@ export function apply(ctx, config = {}) {
         },
       })
       controller = activeController
-      const previous = opened.state.chiefSessionId ?? config.chiefSessionId
-      if (previous) {
-        await restoreChiefPreset(ctx, previous)
-        store.state.chiefSessionId = previous
-        await store.save()
-      } else {
-        const root = join(directory, 'workspace')
-        await mkdir(root, { recursive: true })
-        const workspace = await ctx.workspaceRegistry.resolveByPath(root) ?? await ctx.workspaceRegistry.create(root, 'Chief')
-        const created = await ctx.sessionController.create({ workspaceId: workspace.id, agentPreset: 'independent-chief' })
-        chiefSessionId = created.sessionId
-        const resolved = await ctx.sessionController.resolveAgent(created.sessionId)
-        if (resolved.error) throw new Error(resolved.error.message)
-        await ctx.sessionTitle.rename(resolved.agent.session, 'Chief')
-        store.state.chiefSessionId = created.sessionId
-        await store.save()
-      }
+      await ensureChiefSession()
       internalWorkspaceId = (await ctx.workspaceRegistry.resolveByPath(join(directory, 'workspace')))?.id
       // Recovery can enqueue a Chief turn. Restrict its tools before that turn
       // can start; readiness gates tool execution, never the deny-all scope.
@@ -131,7 +146,7 @@ export function apply(ctx, config = {}) {
       store = undefined
       await opened.close().catch(closeError => console.error('Chief cleanup failed:', closeError.message))
       initError = error
-      console.error('Chief initialization failed:', error.message)
+      console.error('[Chief] Initialization isolated; Chief is unavailable:', error.message)
       // Keep Chief fail-closed until its scope is disposed, even though its
       // failed initialization no longer owns the writer lease.
       return () => { chiefSessionId = undefined; releaseInstalled() }
@@ -148,7 +163,7 @@ export function apply(ctx, config = {}) {
         try { releaseInstalled() } finally { await opened.close() }
       }
     }
-  }, error => { initError = error; console.error('Chief initialization failed:', error.message) })
+  }, error => { initError = error; console.error('[Chief] Initialization isolated; Chief is unavailable:', error.message) })
   ctx.effect(storeEffect, 'independent chief store')
   // A coordinator that sleeps in a shell blocks progress reports (observed in
   // the real-model regression). Work belongs in a project session instead.
@@ -210,10 +225,9 @@ export function apply(ctx, config = {}) {
         return await activity.run(async () => {
           let value
           if (body.endpoint === 'open') {
-            await restoreChiefPreset(ctx, store.state.chiefSessionId)
-            value = { chiefSessionId: store.state.chiefSessionId }
+            value = { chiefSessionId: await ensureChiefSession(), sessionRecovery: store.state.sessionRecovery }
           } else if (body.endpoint === 'state') value = store.state
-          else if (body.endpoint === 'board') value = { ...controller.list(), chiefSessionId: store.state.chiefSessionId, internalWorkspaceId, route: store.state.route }
+          else if (body.endpoint === 'board') value = { ...controller.list(), chiefSessionId: store.state.chiefSessionId, internalWorkspaceId, route: store.state.route, sessionRecovery: store.state.sessionRecovery }
           else if (body.endpoint === 'command') value = await controller.command(body.payload.line, body.payload.sessionId)
           else throw new Error('Unknown endpoint')
           return new Response(JSON.stringify({ok:true,value}), {headers:{'content-type':'application/json'}})
