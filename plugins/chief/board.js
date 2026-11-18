@@ -14,13 +14,15 @@ export function createBoard() {
 .chief-board p{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}.chief-board .chief-meta{opacity:.7;font-size:12px}.chief-board .chief-attention{border-left:3px solid #d29839;padding-left:10px}
 .chief-board details{margin-top:10px;font-size:12px}.chief-board summary{cursor:pointer;opacity:.7}
 .chief-board .chief-error{color:#c74a35}
-</style><section id="chief-project-board" aria-label="Chief 项目看板"><header><h2>项目进度</h2></header><p class="chief-summary">正在读取项目记录…</p><p class="chief-error" role="status"></p><div class="chief-cards"></div></section>`
+</style><section id="chief-project-board" aria-label="Chief 项目看板"><header><h2>项目进度</h2></header><p class="chief-summary">正在读取项目记录…</p><p class="chief-recovery" role="status"></p><p class="chief-error" role="status"></p><div class="chief-cards"></div></section>`
   let previous
   return {
     root,
     error(message) { root.querySelector('.chief-error').textContent = message },
     render(state) {
       root.querySelector('.chief-error').textContent = state.memoryError ?? ''
+      root.querySelector('.chief-recovery').textContent = state.sessionRecovery
+        ? '上次的 Chief 会话已不存在，已新建。项目记录和记忆已保留。' : ''
       const signature = JSON.stringify(state.projects)
       if (signature === previous) return
       previous = signature

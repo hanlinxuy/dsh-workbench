@@ -23,6 +23,7 @@ export function apply(ctx, config = {}) {
   const open = async id => { await ctx.sessions.refresh(); if (!stopped) ctx.uiWorkspace.openSession(id) }
   // Use the native panel registry so pinning, collapsed sidebar and More all
   // behave like the built-in entries. This panel opens the bound conversation.
+  let shownRecovery
   function ChiefEntry() {
     const [error, setError] = useState('')
     const [attempt, setAttempt] = useState(0)
@@ -31,11 +32,16 @@ export function apply(ctx, config = {}) {
       const signal = ctx.layout.beginNavigation()
       void call('open').then(async state => {
         await ctx.sessions.refresh()
-        if (!signal.aborted) ctx.uiWorkspace.openSession(state.chiefSessionId)
+        if (signal.aborted) return
+        if (state.sessionRecovery && shownRecovery !== state.sessionRecovery.recoveredAt) {
+          shownRecovery = state.sessionRecovery.recoveredAt
+          notify('上次的 Chief 会话已不存在，已新建。')
+        }
+        ctx.uiWorkspace.openSession(state.chiefSessionId)
       }).catch(error => { if (!signal.aborted) setError(error.message) })
     }, [attempt])
     return createElement('div', { style: { padding: '32px' }, role: 'status' }, error
-      ? createElement('div', null, `无法打开 Chief：${error}。`, createElement('button', { onClick: () => setAttempt(attempt + 1) }, '重试'))
+      ? createElement('div', null, `无法打开 Chief：${error}。`, createElement('button', { onClick: () => setAttempt(attempt + 1) }, '重试打开或恢复'))
       : '正在打开 Chief 管家…')
   }
   function BoardPanel() {

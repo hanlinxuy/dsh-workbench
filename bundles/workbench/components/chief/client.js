@@ -148,7 +148,7 @@ function createBoard() {
 .chief-board p{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}.chief-board .chief-meta{opacity:.7;font-size:12px}.chief-board .chief-attention{border-left:3px solid #d29839;padding-left:10px}
 .chief-board details{margin-top:10px;font-size:12px}.chief-board summary{cursor:pointer;opacity:.7}
 .chief-board .chief-error{color:#c74a35}
-</style><section id="chief-project-board" aria-label="Chief \u9879\u76EE\u770B\u677F"><header><h2>\u9879\u76EE\u8FDB\u5EA6</h2></header><p class="chief-summary">\u6B63\u5728\u8BFB\u53D6\u9879\u76EE\u8BB0\u5F55\u2026</p><p class="chief-error" role="status"></p><div class="chief-cards"></div></section>`;
+</style><section id="chief-project-board" aria-label="Chief \u9879\u76EE\u770B\u677F"><header><h2>\u9879\u76EE\u8FDB\u5EA6</h2></header><p class="chief-summary">\u6B63\u5728\u8BFB\u53D6\u9879\u76EE\u8BB0\u5F55\u2026</p><p class="chief-recovery" role="status"></p><p class="chief-error" role="status"></p><div class="chief-cards"></div></section>`;
   let previous;
   return {
     root,
@@ -157,6 +157,7 @@ function createBoard() {
     },
     render(state) {
       root.querySelector(".chief-error").textContent = state.memoryError ?? "";
+      root.querySelector(".chief-recovery").textContent = state.sessionRecovery ? "\u4E0A\u6B21\u7684 Chief \u4F1A\u8BDD\u5DF2\u4E0D\u5B58\u5728\uFF0C\u5DF2\u65B0\u5EFA\u3002\u9879\u76EE\u8BB0\u5F55\u548C\u8BB0\u5FC6\u5DF2\u4FDD\u7559\u3002" : "";
       const signature = JSON.stringify(state.projects);
       if (signature === previous) return;
       previous = signature;
@@ -233,6 +234,7 @@ function apply(ctx, config = {}) {
     await ctx.sessions.refresh();
     if (!stopped) ctx.uiWorkspace.openSession(id);
   };
+  let shownRecovery;
   function ChiefEntry() {
     const [error, setError] = (0, import_react.useState)("");
     const [attempt, setAttempt] = (0, import_react.useState)(0);
@@ -241,12 +243,17 @@ function apply(ctx, config = {}) {
       const signal = ctx.layout.beginNavigation();
       void call("open").then(async (state) => {
         await ctx.sessions.refresh();
-        if (!signal.aborted) ctx.uiWorkspace.openSession(state.chiefSessionId);
+        if (signal.aborted) return;
+        if (state.sessionRecovery && shownRecovery !== state.sessionRecovery.recoveredAt) {
+          shownRecovery = state.sessionRecovery.recoveredAt;
+          notify("\u4E0A\u6B21\u7684 Chief \u4F1A\u8BDD\u5DF2\u4E0D\u5B58\u5728\uFF0C\u5DF2\u65B0\u5EFA\u3002");
+        }
+        ctx.uiWorkspace.openSession(state.chiefSessionId);
       }).catch((error2) => {
         if (!signal.aborted) setError(error2.message);
       });
     }, [attempt]);
-    return (0, import_react.createElement)("div", { style: { padding: "32px" }, role: "status" }, error ? (0, import_react.createElement)("div", null, `\u65E0\u6CD5\u6253\u5F00 Chief\uFF1A${error}\u3002`, (0, import_react.createElement)("button", { onClick: () => setAttempt(attempt + 1) }, "\u91CD\u8BD5")) : "\u6B63\u5728\u6253\u5F00 Chief \u7BA1\u5BB6\u2026");
+    return (0, import_react.createElement)("div", { style: { padding: "32px" }, role: "status" }, error ? (0, import_react.createElement)("div", null, `\u65E0\u6CD5\u6253\u5F00 Chief\uFF1A${error}\u3002`, (0, import_react.createElement)("button", { onClick: () => setAttempt(attempt + 1) }, "\u91CD\u8BD5\u6253\u5F00\u6216\u6062\u590D")) : "\u6B63\u5728\u6253\u5F00 Chief \u7BA1\u5BB6\u2026");
   }
   function BoardPanel() {
     const container = (0, import_react.useRef)(null);
