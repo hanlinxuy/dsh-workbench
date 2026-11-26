@@ -4,14 +4,14 @@
     "browser": "0.1.6",
     "desktop": "0.1.4",
     "git": "0.2.8",
-    "provider-gateway": "0.1.5"
+    "provider-gateway": "0.1.6"
   },
   "commits": {
     "chief": "e4fc839405baf1b5d1f869a803123e9b6b9f335e",
     "browser": "3518bf525f0b9d5ebcf49c1e5caad4be258fb441",
     "desktop": "3518bf525f0b9d5ebcf49c1e5caad4be258fb441",
     "git": "3518bf525f0b9d5ebcf49c1e5caad4be258fb441",
-    "provider-gateway": "2158029f4c6fa51286cb5132f0b55140318c8e10"
+    "provider-gateway": "3134509a1900c7c18f2fdf3fccf9cd015218799d"
   },
   "sha256": {
     "components/chief/package.json": "6fde1162870123442366bfd8dd1078c8ed79c3768ba37fe4a65697d8470b75e9",
@@ -57,11 +57,11 @@
     "components/git/write-journal.js": "b2d190206aad345b1777e2ff48c0cc2c57f51f8ebd2f4ecbf7a8cc1562aeb0fc",
     "components/git/merge-authorization.js": "1fb6b8b2369f608be24af5a612ca564a44596570d5ea0d01329ee95b2c590cb5",
     "components/git/egress.js": "560ae6d3d07e9cae9097d7b91ba9f18eb160e40c596b657317352a98377c67a6",
-    "components/provider-gateway/package.json": "5f8e0ad567ab9bf9b27ea93b7929dffbdb957fcc11771eef0a48cf72517bc71a",
+    "components/provider-gateway/package.json": "f969e1c5ca4a69ded3ee3d7ed874c288fd4bc90986ba2019e9ea0418e1df8a3a",
     "components/provider-gateway/index.js": "810fce923a9c2e43e6eba5bb013e432bc7dfeb0c445140c7ed8034383031ff3a",
-    "components/provider-gateway/runtime.js": "5b9f1944e832977f4b3fe5cb98fb3c73bb3def4d12cfe21a2a19fd5a51e95f34",
+    "components/provider-gateway/runtime.js": "76e6a0c1788b421b5d4bc6c278119071b9bc19065ed404e261a5101add749783",
     "components/provider-gateway/cordis.patch.yml": "422e68aa389746811c0b7cc16e9ca9d5c8fd32568830706b31a5b250425eb644",
-    "components/provider-gateway/README.md": "63d319dcdead3d214652baa40fd9b69496def589ac70ea25b1eedb759e108406",
+    "components/provider-gateway/README.md": "f55370024c5fbca3977baf764d17178fec6ae8886ea9d3ffed40eb2b23170a78",
     "components/provider-gateway/LICENSE": "4705f4d5cdffe68a173c233767273b24c5d1b8da45bd1b603fd69ae47378f2d9",
     "components/provider-gateway/scheduler.js": "3040849656fb5e548a75bfaebf033110e4524f4877b6b206f70c8384554fd799",
     "components/provider-gateway/pool.js": "16e785ca387ad4c568bbddb4ac641603f94971243bddc6339aad1e4df2531e34",

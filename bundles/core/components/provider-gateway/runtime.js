@@ -149,7 +149,18 @@ export function createGateway({ config, credentials, fetchImpl = fetch, now = Da
           const response=await handle(new Request(`http://127.0.0.1:${config.port}${req.url}`,{method:req.method,headers:req.headers,...(['GET','HEAD'].includes(req.method)?{}:{body:Buffer.concat(chunks)})}),abort.signal)
           res.writeHead(response.status,Object.fromEntries(response.headers));if(response.body)await pipeline(Readable.fromWeb(response.body),res,{signal:abort.signal});else res.end()
         }
-        void serve().catch(()=>{if(abort.signal.aborted)logger.info({event:'cancelled'});if(!res.headersSent)res.writeHead(502,{'content-type':'application/json'});res.end(JSON.stringify({error:'Gateway request failed; inspect backend settings'}))})
+        void serve().catch(error => {
+          if (abort.signal.aborted) logger.info({ event: 'cancelled' })
+          if (res.destroyed || res.writableEnded) return
+          if (res.headersSent) {
+            res.destroy()
+            return
+          }
+          const timedOut = error?.name === 'TimeoutError'
+          const message = timedOut ? 'Gateway request timed out' : 'Gateway request failed; inspect backend settings'
+          res.writeHead(timedOut ? 504 : 502, { 'content-type': 'application/json' })
+          res.end(JSON.stringify({ error: message }))
+        })
       })
       await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(config.port,'127.0.0.1',resolve)}).catch(error=>{server=undefined;lastError=`Gateway port ${config.port}: ${error.code??'listen failed'}; this instance is not listening. Inspect the port owner with lsof -nP -iTCP:${config.port} (macOS/Linux) or Get-NetTCPConnection -LocalPort ${config.port} (PowerShell).`;throw Error(lastError)})
       lastError=undefined;listeners.set(config.port,{server,pid:process.pid,instanceId})

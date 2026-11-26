@@ -23,7 +23,7 @@ git+https://github.com/hanlinxuy/dsh-workbench.git#release/workbench
 | [Git](plugins/git/README.md) | 多平台/remote、分级写权限、逐次外发审批与持久审计 | 可选，0.2.8 |
 | [Browser](plugins/browser/README.md) | 固定 AB release、站点账号、私有截图与 Cookie 捕获/恢复 | 可选，0.1.6 |
 | [Chief](plugins/chief/README.md) | 项目调度、记忆、任务验收、人工接手、项目看板 | 0.3.8 |
-| [Provider gateway](plugins/provider-gateway/README.md) | 内网模型路由、探测、排队与受控同步 | 默认关闭，0.1.5 |
+| [Provider gateway](plugins/provider-gateway/README.md) | 内网模型路由、探测、排队与受控同步 | 默认关闭，0.1.6 |
 
 Chief 独立运行在 DSH 内，不依赖 Pi Durable 或 DS-Bot。模型与登录由 DSH 提供。
 `plugins/chief` 是 Chief 的唯一维护目录，后续开发、修复与发布均在本仓库进行。
