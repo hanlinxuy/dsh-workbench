@@ -81,3 +81,50 @@ test('authentication is mandatory, precedes routes, and rotates without restart'
  assert.equal((await missing.handle(auth('second'))).status,401)
  await missing.close()
 })
+
+test('HTTP timeouts fail only their request before and after streaming starts', async () => {
+ const reserve = createServer()
+ await new Promise(resolve => reserve.listen(0, '127.0.0.1', resolve))
+ const { port } = reserve.address()
+ await new Promise(resolve => reserve.close(resolve))
+
+ let attempt = 0
+ const upstream = createServer((req, res) => {
+  req.resume()
+  attempt++
+  if (attempt === 1) return
+  if (attempt === 2) {
+   res.writeHead(200, { 'content-type': 'text/event-stream' })
+   res.write('data: started\n\n')
+   return
+  }
+  res.writeHead(200, { 'content-type': 'application/json' })
+  res.end('{"ok":true}')
+ })
+ await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve))
+ const baseURL = `http://127.0.0.1:${upstream.address().port}/v1`
+ const g = fixture({ config: { ...config, port, timeoutMs: 500,
+  backends: { a: { ...config.backends.a, baseURL } },
+ } })
+ const send = () => fetch(`http://127.0.0.1:${port}/a/v1/chat/completions`, {
+  method: 'POST', headers: { 'x-gateway-token': 'local-test-token' },
+  body: JSON.stringify(chat), signal: AbortSignal.timeout(5000),
+ })
+ try {
+  await g.start()
+  const timeout = await send()
+  assert.equal(timeout.status, 504)
+  assert.deepEqual(await timeout.json(), { error: 'Gateway request timed out' })
+
+  const stream = await send()
+  assert.equal(stream.status, 200)
+  const reader = stream.body.getReader()
+  assert.equal(new TextDecoder().decode((await reader.read()).value), 'data: started\n\n')
+  await assert.rejects(reader.read(), /terminated/)
+  assert.equal(g.status().listening, true)
+  assert.deepEqual(await (await send()).json(), { ok: true })
+ } finally {
+  await g.close()
+  await new Promise(resolve => { upstream.close(resolve); upstream.closeAllConnections() })
+ }
+})
